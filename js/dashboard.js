@@ -24,32 +24,25 @@ async function initDashboard() {
             console.error('Profile fetch error:', profileError);
             
             // Try to create profile if it doesn't exist
-            if (profileError.message.includes('not found') || profileError.code === 'PGRST116') {
-                const { data: newProfile, error: createError } = await window.supabaseClient
-                    .from('users')
-                    .insert([
-                        {
-                            id: session.user.id,
-                            email: session.user.email,
-                            full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-                            role: 'student',
-                            created_at: new Date().toISOString()
-                        }
-                    ])
-                    .select()
-                    .single();
-                
-                if (createError) {
-                    console.error('Profile creation error:', createError);
-                    showAlert('Error creating profile. Please contact support.');
-                    return;
-                }
-                
-                currentUserProfile = newProfile;
-            } else {
-                showAlert('Error loading profile. Please try again.');
+            const { data: newProfile, error: createError } = await window.supabaseClient
+                .from('users')
+                .insert({
+                    id: session.user.id,
+                    email: session.user.email,
+                    full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                    role: 'student',
+                    created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+            
+            if (createError) {
+                console.error('Profile creation error:', createError);
+                showAlert('Error creating profile. Please contact support.');
                 return;
             }
+            
+            currentUserProfile = newProfile;
         } else {
             currentUserProfile = userProfile;
         }
@@ -112,7 +105,7 @@ async function initDashboard() {
     }
 }
 
-// Load posts based on user role
+// Load posts
 async function loadPosts() {
     try {
         let query = window.supabaseClient
@@ -120,7 +113,7 @@ async function loadPosts() {
             .select('*')
             .order('created_at', { ascending: false });
         
-        // Filter posts based on role
+        // Filter posts for students
         if (currentUserProfile.role === 'student') {
             query = query.or(`audience.eq.student,audience.eq.all`);
         }
@@ -216,7 +209,7 @@ function displayStudentPosts(posts) {
                     <div class="text-xs text-gray-500">${new Date(post.created_at).toLocaleDateString()}</div>
                 </div>
                 <h3 class="text-xl font-bold mb-2">${escapeHtml(post.title)}</h3>
-                ${post.description ? `<p class="text-gray-300 text-sm mb-4 line-clamp-2">${escapeHtml(post.description)}</p>` : ''}
+                ${post.description ? `<p class="text-gray-300 text-sm mb-4">${escapeHtml(post.description)}</p>` : ''}
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-purple-400">Click to view</span>
                     <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,21 +227,18 @@ function renderFilePreview(post) {
         return `<img src="${post.file_url}" alt="${post.title}" class="w-full h-48 object-cover">`;
     } else if (post.type === 'video') {
         return `
-            <div class="video-container">
-                <video class="w-full h-48 object-cover" controls>
+            <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden">
+                <video style="position:absolute;top:0;left:0;width:100%;height:100%" controls>
                     <source src="${post.file_url}" type="video/mp4">
                 </video>
             </div>
         `;
     } else {
         return `
-            <div class="w-full h-48 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center relative">
+            <div class="w-full h-48 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
                 <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
-                <div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition">
-                    <span class="text-white font-bold">View PDF</span>
-                </div>
             </div>
         `;
     }
@@ -289,7 +279,6 @@ function setupCreatePostForm(form) {
             }
         });
         
-        // Trigger file input on div click
         const fileLabel = document.querySelector('.file-upload-area');
         if (fileLabel) {
             fileLabel.addEventListener('click', () => {
@@ -312,7 +301,6 @@ function setupCreatePostForm(form) {
                 throw new Error('Please fill in title and select a file');
             }
             
-            // Upload file to Supabase Storage
             const fileName = `${Date.now()}_${file.name}`;
             const { error: uploadError } = await window.supabaseClient.storage
                 .from('files')
@@ -320,31 +308,26 @@ function setupCreatePostForm(form) {
             
             if (uploadError) throw uploadError;
             
-            // Get public URL
             const { data: { publicUrl } } = window.supabaseClient.storage
                 .from('files')
                 .getPublicUrl(fileName);
             
-            // Determine file type
             let fileType = 'file';
             if (file.type.startsWith('image/')) fileType = 'image';
             else if (file.type.startsWith('video/')) fileType = 'video';
             else if (file.type === 'application/pdf') fileType = 'pdf';
             
-            // Save to posts table
             const { error: insertError } = await window.supabaseClient
                 .from('posts')
-                .insert([
-                    {
-                        title,
-                        description,
-                        audience,
-                        file_url: publicUrl,
-                        type: fileType,
-                        user_id: currentUser.id,
-                        created_at: new Date().toISOString()
-                    }
-                ]);
+                .insert({
+                    title,
+                    description,
+                    audience,
+                    file_url: publicUrl,
+                    type: fileType,
+                    user_id: currentUser.id,
+                    created_at: new Date().toISOString()
+                });
             
             if (insertError) throw insertError;
             
@@ -359,7 +342,6 @@ function setupCreatePostForm(form) {
                 `;
             }
             
-            // Reload posts
             await loadPosts();
             
         } catch (error) {
@@ -400,15 +382,9 @@ function setupSearchAndFilter() {
     if (typeFilter) typeFilter.addEventListener('change', filterPosts);
 }
 
-// Delete post (admin only)
+// Delete post
 window.deletePost = async (postId) => {
     if (!confirm('Are you sure you want to delete this material?')) return;
-    
-    // Check if user is admin
-    if (currentUserProfile.role !== 'admin') {
-        showAlert('Only admins can delete materials');
-        return;
-    }
     
     showLoading();
     try {
@@ -420,8 +396,6 @@ window.deletePost = async (postId) => {
         if (error) throw error;
         
         showAlert('Material deleted successfully!', false);
-        
-        // Reload posts
         await loadPosts();
         
     } catch (error) {
