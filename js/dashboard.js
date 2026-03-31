@@ -1,3 +1,8 @@
+// Global variables
+let allPosts = [];
+let currentUser = null;
+let currentUserProfile = null;
+
 // Check authentication and load dashboard
 async function initDashboard() {
     showLoading();
@@ -6,7 +11,9 @@ async function initDashboard() {
         const session = await checkAuth();
         if (!session) return;
         
-        // Get user profile
+        currentUser = session.user;
+        
+        // Get user profile from users table
         const { data: userProfile, error: profileError } = await window.supabaseClient
             .from('users')
             .select('*')
@@ -14,20 +21,48 @@ async function initDashboard() {
             .single();
         
         if (profileError) {
-            console.error('Profile error:', profileError);
-            window.location.href = '/login.html';
-            return;
+            console.error('Profile fetch error:', profileError);
+            
+            // Try to create profile if it doesn't exist
+            if (profileError.message.includes('not found')) {
+                const { data: newProfile, error: createError } = await window.supabaseClient
+                    .from('users')
+                    .insert([
+                        {
+                            id: session.user.id,
+                            email: session.user.email,
+                            full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                            role: 'student',
+                            created_at: new Date().toISOString()
+                        }
+                    ])
+                    .select()
+                    .single();
+                
+                if (createError) {
+                    console.error('Profile creation error:', createError);
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                currentUserProfile = newProfile;
+            } else {
+                window.location.href = '/login.html';
+                return;
+            }
+        } else {
+            currentUserProfile = userProfile;
         }
         
         // Check role matches page
         const currentPage = window.location.pathname;
-        if (currentPage.includes('admin.html') && userProfile.role !== 'admin') {
+        if (currentPage.includes('admin.html') && currentUserProfile.role !== 'admin') {
             window.location.href = '/student.html';
             return;
         }
         
         // Display user info
-        if (userProfile.role === 'admin') {
+        if (currentUserProfile.role === 'admin') {
             const adminEmailSpan = document.getElementById('adminEmail');
             if (adminEmailSpan) {
                 adminEmailSpan.textContent = session.user.email;
@@ -36,48 +71,48 @@ async function initDashboard() {
             const studentNameSpan = document.getElementById('studentName');
             const studentEmailSpan = document.getElementById('studentEmail');
             if (studentNameSpan) {
-                studentNameSpan.textContent = userProfile.full_name || session.user.email.split('@')[0];
+                studentNameSpan.textContent = currentUserProfile.full_name || session.user.email.split('@')[0];
             }
             if (studentEmailSpan) {
                 studentEmailSpan.textContent = session.user.email;
             }
         }
         
-        // Load posts based on role
-        await loadPosts(userProfile);
+        // Load posts
+        await loadPosts();
         
         // Setup logout
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
+                showLoading();
                 await window.supabaseClient.auth.signOut();
                 window.location.href = '/login.html';
+                hideLoading();
             });
         }
         
         // Setup create post form for admin
         const createPostForm = document.getElementById('createPostForm');
-        if (createPostForm && userProfile.role === 'admin') {
-            setupCreatePostForm(createPostForm, session.user.id);
+        if (createPostForm && currentUserProfile.role === 'admin') {
+            setupCreatePostForm(createPostForm);
         }
         
         // Setup search and filter for student
-        if (userProfile.role === 'student') {
+        if (currentUserProfile.role === 'student') {
             setupSearchAndFilter();
         }
         
     } catch (error) {
         console.error('Dashboard init error:', error);
-        showAlert('Error loading dashboard');
+        showAlert('Error loading dashboard: ' + error.message);
     } finally {
         hideLoading();
     }
 }
 
 // Load posts based on user role
-let allPosts = [];
-
-async function loadPosts(userProfile) {
+async function loadPosts() {
     try {
         let query = window.supabaseClient
             .from('posts')
@@ -85,7 +120,7 @@ async function loadPosts(userProfile) {
             .order('created_at', { ascending: false });
         
         // Filter posts based on role
-        if (userProfile.role === 'student') {
+        if (currentUserProfile.role === 'student') {
             query = query.or(`audience.eq.student,audience.eq.all`);
         }
         
@@ -95,20 +130,20 @@ async function loadPosts(userProfile) {
         
         allPosts = posts || [];
         
-        if (userProfile.role === 'student') {
+        if (currentUserProfile.role === 'student') {
             displayStudentPosts(allPosts);
         } else {
-            displayAdminPosts(allPosts, userProfile);
+            displayAdminPosts(allPosts);
         }
         
     } catch (error) {
         console.error('Load posts error:', error);
-        showAlert('Error loading posts');
+        showAlert('Error loading posts: ' + error.message);
     }
 }
 
 // Display posts for admin
-function displayAdminPosts(posts, userProfile) {
+function displayAdminPosts(posts) {
     const container = document.getElementById('postsContainer');
     if (!container) return;
     
@@ -180,7 +215,7 @@ function displayStudentPosts(posts) {
                     <div class="text-xs text-gray-500">${new Date(post.created_at).toLocaleDateString()}</div>
                 </div>
                 <h3 class="text-xl font-bold mb-2">${escapeHtml(post.title)}</h3>
-                ${post.description ? `<p class="text-gray-300 text-sm mb-4">${escapeHtml(post.description)}</p>` : ''}
+                ${post.description ? `<p class="text-gray-300 text-sm mb-4 line-clamp-2">${escapeHtml(post.description)}</p>` : ''}
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-purple-400">Click to view</span>
                     <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +241,7 @@ function renderFilePreview(post) {
         `;
     } else {
         return `
-            <div class="w-full h-48 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+            <div class="w-full h-48 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center relative">
                 <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
@@ -230,7 +265,7 @@ function getTypeIcon(type) {
 }
 
 // Setup create post form
-function setupCreatePostForm(form, userId) {
+function setupCreatePostForm(form) {
     const fileInput = document.getElementById('postFile');
     const fileInfo = document.getElementById('fileInfo');
     
@@ -305,7 +340,8 @@ function setupCreatePostForm(form, userId) {
                         audience,
                         file_url: publicUrl,
                         type: fileType,
-                        user_id: userId
+                        user_id: currentUser.id,
+                        created_at: new Date().toISOString()
                     }
                 ]);
             
@@ -323,16 +359,11 @@ function setupCreatePostForm(form, userId) {
             }
             
             // Reload posts
-            const { data: { session } } = await window.supabaseClient.auth.getSession();
-            const { data: userProfile } = await window.supabaseClient
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-            await loadPosts(userProfile);
+            await loadPosts();
             
         } catch (error) {
-            showAlert(error.message);
+            console.error('Create post error:', error);
+            showAlert(error.message || 'Error publishing material');
         } finally {
             hideLoading();
         }
@@ -364,8 +395,8 @@ function setupSearchAndFilter() {
         displayStudentPosts(filtered);
     };
     
-    searchInput.addEventListener('input', filterPosts);
-    typeFilter.addEventListener('change', filterPosts);
+    if (searchInput) searchInput.addEventListener('input', filterPosts);
+    if (typeFilter) typeFilter.addEventListener('change', filterPosts);
 }
 
 // Delete post (admin only)
@@ -384,16 +415,11 @@ window.deletePost = async (postId) => {
         showAlert('Material deleted successfully!', false);
         
         // Reload posts
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        const { data: userProfile } = await window.supabaseClient
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-        await loadPosts(userProfile);
+        await loadPosts();
         
     } catch (error) {
-        showAlert(error.message);
+        console.error('Delete post error:', error);
+        showAlert(error.message || 'Error deleting material');
     } finally {
         hideLoading();
     }
