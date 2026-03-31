@@ -24,7 +24,7 @@ async function initDashboard() {
             console.error('Profile fetch error:', profileError);
             
             // Try to create profile if it doesn't exist
-            if (profileError.message.includes('not found')) {
+            if (profileError.message.includes('not found') || profileError.code === 'PGRST116') {
                 const { data: newProfile, error: createError } = await window.supabaseClient
                     .from('users')
                     .insert([
@@ -41,13 +41,13 @@ async function initDashboard() {
                 
                 if (createError) {
                     console.error('Profile creation error:', createError);
-                    window.location.href = '/login.html';
+                    showAlert('Error creating profile. Please contact support.');
                     return;
                 }
                 
                 currentUserProfile = newProfile;
             } else {
-                window.location.href = '/login.html';
+                showAlert('Error loading profile. Please try again.');
                 return;
             }
         } else {
@@ -57,6 +57,7 @@ async function initDashboard() {
         // Check role matches page
         const currentPage = window.location.pathname;
         if (currentPage.includes('admin.html') && currentUserProfile.role !== 'admin') {
+            showAlert('Access denied. Admin only.');
             window.location.href = '/student.html';
             return;
         }
@@ -402,6 +403,12 @@ function setupSearchAndFilter() {
 // Delete post (admin only)
 window.deletePost = async (postId) => {
     if (!confirm('Are you sure you want to delete this material?')) return;
+    
+    // Check if user is admin
+    if (currentUserProfile.role !== 'admin') {
+        showAlert('Only admins can delete materials');
+        return;
+    }
     
     showLoading();
     try {
