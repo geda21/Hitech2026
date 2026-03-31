@@ -65,3 +65,17 @@ window.getUserRole = async (userId) => {
         return null;
     }
 };
+
+// Check if user is admin
+window.isAdmin = async () => {
+    const session = await window.supabaseClient.auth.getSession();
+    if (!session.data.session) return false;
+    
+    const { data } = await window.supabaseClient
+        .from('users')
+        .select('role')
+        .eq('id', session.data.session.user.id)
+        .single();
+    
+    return data?.role === 'admin';
+};
