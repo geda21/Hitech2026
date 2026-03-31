@@ -1,52 +1,3 @@
-// Initialize database tables if they don't exist
-async function initializeDatabase() {
-    try {
-        // Check if users table exists by trying to select from it
-        const { error: usersError } = await window.supabaseClient
-            .from('users')
-            .select('id')
-            .limit(1);
-        
-        if (usersError && usersError.message.includes('does not exist')) {
-            console.log('Users table does not exist. Please run the SQL setup script.');
-            showAlert('Database not initialized. Please contact administrator.', true);
-        }
-        
-        // Check if posts table exists
-        const { error: postsError } = await window.supabaseClient
-            .from('posts')
-            .select('id')
-            .limit(1);
-        
-        if (postsError && postsError.message.includes('does not exist')) {
-            console.log('Posts table does not exist. Please run the SQL setup script.');
-            showAlert('Database not initialized. Please contact administrator.', true);
-        }
-        
-        // Check if files bucket exists
-        const { data: buckets, error: bucketsError } = await window.supabaseClient
-            .storage
-            .listBuckets();
-        
-        if (!bucketsError) {
-            const filesBucket = buckets.find(b => b.name === 'files');
-            if (!filesBucket) {
-                console.log('Creating files bucket...');
-                const { error: createError } = await window.supabaseClient.storage.createBucket('files', {
-                    public: true
-                });
-                if (createError) {
-                    console.error('Error creating bucket:', createError);
-                } else {
-                    console.log('Files bucket created successfully');
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Database initialization error:', error);
-    }
-}
-
 // Login handler
 if (document.getElementById('loginForm')) {
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -72,35 +23,33 @@ if (document.getElementById('loginForm')) {
                 throw new Error('Login failed');
             }
             
-            // Get user role from users table
-            const { data: userData, error: roleError } = await window.supabaseClient
+            // Check if user exists in users table
+            let { data: userData, error: userError } = await window.supabaseClient
                 .from('users')
-                .select('role')
+                .select('*')
                 .eq('id', data.user.id)
                 .single();
             
-            if (roleError) {
-                console.error('Role fetch error:', roleError);
-                // If user doesn't exist in users table, create it
-                if (roleError.message.includes('not found')) {
-                    const { error: insertError } = await window.supabaseClient
-                        .from('users')
-                        .insert([
-                            {
-                                id: data.user.id,
-                                email: email,
-                                full_name: data.user.user_metadata?.full_name || email.split('@')[0],
-                                role: 'student'
-                            }
-                        ]);
-                    
-                    if (insertError) throw insertError;
-                    
-                    // Redirect to student dashboard
-                    window.location.href = '/student.html';
-                    return;
+            // If user doesn't exist in users table, create them
+            if (userError || !userData) {
+                const { data: newUser, error: createError } = await window.supabaseClient
+                    .from('users')
+                    .insert({
+                        id: data.user.id,
+                        email: email,
+                        full_name: data.user.user_metadata?.full_name || email.split('@')[0],
+                        role: 'student',
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (createError) {
+                    console.error('User creation error:', createError);
+                    throw new Error('Failed to create user profile');
                 }
-                throw roleError;
+                
+                userData = newUser;
             }
             
             // Redirect based on role
@@ -155,25 +104,20 @@ if (document.getElementById('signupForm')) {
                 // Insert into users table with role 'student'
                 const { error: insertError } = await window.supabaseClient
                     .from('users')
-                    .insert([
-                        {
-                            id: data.user.id,
-                            email: email,
-                            full_name: fullName,
-                            role: 'student',
-                            created_at: new Date().toISOString()
-                        }
-                    ]);
+                    .insert({
+                        id: data.user.id,
+                        email: email,
+                        full_name: fullName,
+                        role: 'student',
+                        created_at: new Date().toISOString()
+                    });
                 
                 if (insertError) {
                     console.error('Insert error:', insertError);
                     // If insert fails but user is created, still show success
-                    if (insertError.message.includes('duplicate')) {
-                        showAlert('Account created! Please login.', false);
-                        window.location.href = '/login.html';
-                        return;
-                    }
-                    throw insertError;
+                    showAlert('Account created! Please login.', false);
+                    window.location.href = '/login.html';
+                    return;
                 }
                 
                 showAlert('Account created successfully! Please login.', false);
@@ -212,8 +156,7 @@ async function checkAuthRedirect() {
     }
 }
 
-// Initialize database and check auth
-initializeDatabase();
+// Check auth on auth pages
 if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
     checkAuthRedirect();
 }
