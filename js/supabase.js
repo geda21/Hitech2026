@@ -18,27 +18,50 @@ window.hideLoading = () => {
 
 // Helper function to show alert
 window.showAlert = (message, isError = true) => {
-    alert(message);
+    if (isError) {
+        alert('❌ ' + message);
+    } else {
+        alert('✅ ' + message);
+    }
 };
 
 // Check if user is authenticated
 window.checkAuth = async () => {
-    const { data: { session }, error } = await window.supabaseClient.auth.getSession();
-    if (error || !session) {
+    try {
+        const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+        if (error) {
+            console.error('Auth check error:', error);
+            window.location.href = '/login.html';
+            return null;
+        }
+        if (!session) {
+            window.location.href = '/login.html';
+            return null;
+        }
+        return session;
+    } catch (error) {
+        console.error('Auth check error:', error);
         window.location.href = '/login.html';
         return null;
     }
-    return session;
 };
 
 // Get user role
 window.getUserRole = async (userId) => {
-    const { data, error } = await window.supabaseClient
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-    
-    if (error) return null;
-    return data?.role;
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('users')
+            .select('role')
+            .eq('id', userId)
+            .single();
+        
+        if (error) {
+            console.error('Get role error:', error);
+            return null;
+        }
+        return data?.role;
+    } catch (error) {
+        console.error('Get role error:', error);
+        return null;
+    }
 };
