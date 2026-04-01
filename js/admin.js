@@ -41,9 +41,13 @@ async function initAdminDashboard() {
             return;
         }
         
-        // Display admin email
+        // Display admin email (both desktop and mobile)
         const adminEmailEl = document.getElementById('adminEmail');
         if (adminEmailEl) adminEmailEl.textContent = currentUser.email;
+        
+        // Update mobile email
+        const mobileAdminEmail = document.getElementById('mobileAdminEmail');
+        if (mobileAdminEmail) mobileAdminEmail.textContent = currentUser.email;
         
         // Load stats
         await loadAdminStats();
@@ -54,10 +58,22 @@ async function initAdminDashboard() {
         // Setup create post form
         setupCreatePostForm();
         
-        // Setup logout
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.onclick = async () => {
+        // Setup logout buttons (FIXED - both desktop and mobile)
+        const desktopLogoutBtn = document.getElementById('desktopLogoutBtn');
+        if (desktopLogoutBtn) {
+            desktopLogoutBtn.onclick = async () => {
+                console.log('Logging out...');
+                showLoading();
+                await window.supabaseClient.auth.signOut();
+                window.location.href = '/login.html';
+            };
+        }
+        
+        const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+        if (mobileLogoutBtn) {
+            mobileLogoutBtn.onclick = async () => {
+                console.log('Logging out...');
+                showLoading();
                 await window.supabaseClient.auth.signOut();
                 window.location.href = '/login.html';
             };
@@ -91,9 +107,15 @@ async function loadAdminStats() {
             .select('*', { count: 'exact', head: true })
             .eq('role', 'student');
         
+        const students = studentCount || 0;
+        
         if (!countError) {
             const totalStudentsSpan = document.getElementById('totalStudents');
-            if (totalStudentsSpan) totalStudentsSpan.textContent = studentCount || 0;
+            if (totalStudentsSpan) totalStudentsSpan.textContent = students;
+            
+            // Update mobile stats
+            const mobileTotalStudents = document.getElementById('mobileTotalStudents');
+            if (mobileTotalStudents) mobileTotalStudents.textContent = students;
         }
         
         // Get total materials
@@ -101,9 +123,15 @@ async function loadAdminStats() {
             .from('posts')
             .select('*', { count: 'exact', head: true });
         
+        const materials = materialCount || 0;
+        
         if (!materialError) {
             const totalMaterialsSpan = document.getElementById('totalMaterials');
-            if (totalMaterialsSpan) totalMaterialsSpan.textContent = materialCount || 0;
+            if (totalMaterialsSpan) totalMaterialsSpan.textContent = materials;
+            
+            // Update mobile stats
+            const mobileTotalMaterials = document.getElementById('mobileTotalMaterials');
+            if (mobileTotalMaterials) mobileTotalMaterials.textContent = materials;
         }
         
     } catch (error) {
@@ -134,6 +162,9 @@ async function loadPosts() {
         const totalMaterialsSpan = document.getElementById('totalMaterials');
         if (totalMaterialsSpan) totalMaterialsSpan.textContent = allPosts.length;
         
+        const mobileTotalMaterials = document.getElementById('mobileTotalMaterials');
+        if (mobileTotalMaterials) mobileTotalMaterials.textContent = allPosts.length;
+        
     } catch (error) {
         console.error('Load posts error:', error);
         showAlert('Error loading posts');
@@ -146,11 +177,11 @@ function displayPosts(posts) {
     
     if (!posts || posts.length === 0) {
         container.innerHTML = `
-            <div class="col-span-full text-center py-16">
-                <div class="text-6xl mb-4">📚</div>
-                <h3 class="text-xl font-bold mb-2">No materials yet</h3>
-                <p class="text-gray-400">Start by publishing your first learning material using the form above</p>
-                <div class="mt-4 text-sm text-purple-400">✨ Fill out the form and upload a file to get started</div>
+            <div class="col-span-full text-center py-12 lg:py-16">
+                <div class="text-5xl lg:text-6xl mb-4">📚</div>
+                <h3 class="text-lg lg:text-xl font-bold mb-2">No materials yet</h3>
+                <p class="text-gray-400 text-sm lg:text-base">Start by publishing your first learning material using the form above</p>
+                <div class="mt-3 lg:mt-4 text-xs lg:text-sm text-purple-400">✨ Fill out the form and upload a file to get started</div>
             </div>
         `;
         return;
@@ -159,23 +190,23 @@ function displayPosts(posts) {
     container.innerHTML = posts.map(post => `
         <div class="glass-card rounded-xl overflow-hidden post-card">
             ${renderAdminFilePreview(post)}
-            <div class="p-5">
-                <div class="flex justify-between items-start mb-3">
-                    <h3 class="text-lg font-bold">${escapeHtml(post.title)}</h3>
+            <div class="p-4 lg:p-5">
+                <div class="flex justify-between items-start mb-2 lg:mb-3">
+                    <h3 class="text-base lg:text-lg font-bold line-clamp-2">${escapeHtml(post.title)}</h3>
                     <button onclick="deletePost('${post.id}')" class="text-red-400 hover:text-red-300 transition p-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
                     </button>
                 </div>
-                ${post.description ? `<p class="text-gray-300 text-sm mb-3 line-clamp-2">${escapeHtml(post.description)}</p>` : ''}
-                <div class="flex justify-between items-center mt-4 pt-3 border-t border-white/10">
+                ${post.description ? `<p class="text-gray-300 text-xs lg:text-sm mb-2 lg:mb-3 line-clamp-2">${escapeHtml(post.description)}</p>` : ''}
+                <div class="flex flex-wrap justify-between items-center gap-2 mt-3 lg:mt-4 pt-2 lg:pt-3 border-t border-white/10">
                     <span class="text-xs px-2 py-1 ${post.audience === 'student' ? 'bg-green-600/30' : 'bg-purple-600/30'} rounded-full">
                         ${post.audience === 'student' ? '🎓 Student Exclusive' : '📚 General'}
                     </span>
                     <div class="flex gap-2">
                         <span class="text-xs text-gray-500">${post.type.toUpperCase()}</span>
-                        <a href="${post.file_url}" target="_blank" class="text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1">
+                        <a href="${post.file_url}" target="_blank" class="text-purple-400 hover:text-purple-300 text-xs lg:text-sm flex items-center gap-1">
                             View →
                         </a>
                     </div>
@@ -190,19 +221,19 @@ function displayPosts(posts) {
 
 function renderAdminFilePreview(post) {
     if (post.type === 'image') {
-        return `<img src="${post.file_url}" class="w-full h-48 object-cover" alt="${post.title}">`;
+        return `<img src="${post.file_url}" class="w-full h-36 lg:h-48 object-cover" alt="${post.title}">`;
     } else if (post.type === 'video') {
         return `
-            <div style="position:relative;padding-bottom:56.25%">
-                <video style="position:absolute;top:0;left:0;width:100%;height:100%" controls>
+            <div class="video-wrapper">
+                <video class="w-full h-full object-cover" controls>
                     <source src="${post.file_url}">
                 </video>
             </div>
         `;
     } else {
         return `
-            <div class="h-48 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
-                <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="h-36 lg:h-48 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                <svg class="w-12 h-12 lg:w-16 lg:h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
             </div>
@@ -223,14 +254,13 @@ function setupCreatePostForm() {
                 const file = e.target.files[0];
                 const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
                 fileInfo.innerHTML = `
-                    <svg class="w-12 h-12 mx-auto mb-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-2 lg:mb-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    <div class="text-purple-400 font-semibold">${file.name}</div>
+                    <div class="text-purple-400 font-semibold text-sm lg:text-base">${file.name}</div>
                     <div class="text-xs text-gray-400 mt-1">${fileSizeMB} MB</div>
                 `;
                 
-                // Auto-detect type
                 const postType = document.getElementById('postType');
                 if (postType) {
                     if (file.type.startsWith('image/')) postType.value = 'image';
@@ -239,16 +269,15 @@ function setupCreatePostForm() {
                 }
             } else {
                 fileInfo.innerHTML = `
-                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-2 lg:mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
-                    <p class="text-gray-400">Click to upload or drag and drop</p>
+                    <p class="text-gray-400 text-sm">Click to upload or drag and drop</p>
                     <p class="text-xs text-gray-500 mt-2">Supports: Images, Videos, PDFs</p>
                 `;
             }
         };
         
-        // Trigger file input on div click
         const fileLabel = document.querySelector('.file-upload-area');
         if (fileLabel) {
             fileLabel.addEventListener('click', () => fileInput.click());
@@ -272,7 +301,6 @@ function setupCreatePostForm() {
             
             console.log('Uploading file:', file.name);
             
-            // Upload file to Supabase Storage
             const fileName = `${Date.now()}_${file.name}`;
             const { error: uploadError } = await window.supabaseClient.storage
                 .from('files')
@@ -283,14 +311,12 @@ function setupCreatePostForm() {
                 throw new Error('Upload failed: ' + uploadError.message);
             }
             
-            // Get public URL
             const { data: { publicUrl } } = window.supabaseClient.storage
                 .from('files')
                 .getPublicUrl(fileName);
             
             console.log('File uploaded, URL:', publicUrl);
             
-            // Save to posts table
             const { error: insertError } = await window.supabaseClient
                 .from('posts')
                 .insert({
@@ -310,19 +336,17 @@ function setupCreatePostForm() {
             
             showAlert('Material published successfully!', false);
             
-            // Reset form
             form.reset();
             if (fileInfo) {
                 fileInfo.innerHTML = `
-                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-2 lg:mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
-                    <p class="text-gray-400">Click to upload or drag and drop</p>
+                    <p class="text-gray-400 text-sm">Click to upload or drag and drop</p>
                     <p class="text-xs text-gray-500 mt-2">Supports: Images, Videos, PDFs</p>
                 `;
             }
             
-            // Reload posts and stats
             await loadPosts();
             await loadAdminStats();
             
@@ -366,5 +390,4 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize admin dashboard
 initAdminDashboard();
