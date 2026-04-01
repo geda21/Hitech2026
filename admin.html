@@ -2,225 +2,206 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Hi Tech Academy - Admin Portal</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hi Tech Academy">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Inter', sans-serif; }
         
-        .glass {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .glass-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.12); }
+        
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 9999; display: none; }
+        .spinner { width: 50px; height: 50px; border: 3px solid rgba(139,92,246,0.3); border-top: 3px solid #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .file-upload-area { transition: all 0.3s ease; cursor: pointer; }
+        .file-upload-area:hover { border-color: #8b5cf6; background: rgba(139,92,246,0.1); transform: scale(1.02); }
+        .post-card { transition: all 0.3s ease; }
+        .post-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        
+        /* Mobile Styles */
+        .mobile-menu-btn { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: rgba(139,92,246,0.2); backdrop-filter: blur(10px); padding: 0.75rem; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; }
+        .mobile-sidebar { position: fixed; top: 0; left: -100%; width: 85%; max-width: 320px; height: 100vh; z-index: 1000; transition: left 0.3s ease; overflow-y: auto; }
+        .mobile-sidebar.open { left: 0; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; display: none; }
+        .overlay.show { display: block; }
+        
+        @media (max-width: 768px) {
+            .desktop-sidebar { display: none; }
+            .mobile-menu-btn { display: block; }
+            .main-content { margin-left: 0 !important; padding-top: 70px; }
+            .grid-cols-3 { grid-template-columns: 1fr !important; }
+            .stats-cards { flex-direction: column; }
         }
         
-        .glass-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            transition: all 0.3s ease;
+        @media (min-width: 769px) {
+            .mobile-sidebar, .overlay { display: none !important; }
         }
         
-        .glass-card:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.12);
-        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px; }
         
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            display: none;
-        }
-        
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(139,92,246,0.3);
-            border-top: 3px solid #8b5cf6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .file-upload-area {
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .file-upload-area:hover {
-            border-color: #8b5cf6;
-            background: rgba(139, 92, 246, 0.1);
-            transform: scale(1.02);
-        }
-        
-        .post-card {
-            transition: all 0.3s ease;
-        }
-        
-        .post-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        }
-        
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        
-        .animate-slide-in {
-            animation: slideIn 0.5s ease-out;
-        }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 1rem; }
+        .video-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
-    <div id="loading">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="flex h-screen">
-        <div class="w-72 glass fixed h-full animate-slide-in">
-            <div class="p-6">
-                <div class="flex items-center space-x-3 mb-8">
-                    <div class="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </div>
-                    <div class="text-xl font-bold gradient-text">Admin Panel</div>
-                </div>
-                
-                <div class="space-y-6">
-                    <div class="glass-card rounded-xl p-4">
-                        <div class="text-sm text-gray-400 mb-1">Logged in as</div>
-                        <div id="adminEmail" class="font-semibold text-purple-300 truncate"></div>
-                    </div>
-                    
-                    <div class="glass-card rounded-xl p-4">
-                        <div class="text-sm text-gray-400 mb-2">Quick Stats</div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span class="text-sm">Total Materials</span>
-                                <span id="totalMaterials" class="font-bold text-purple-400">0</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm">Students</span>
-                                <span id="totalStudents" class="font-bold text-purple-400">0</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button id="logoutBtn" class="w-full py-2.5 bg-red-600/80 hover:bg-red-600 rounded-xl transition transform hover:scale-105 font-semibold">
-                        Logout
-                    </button>
+    <div id="loading"><div class="spinner"></div></div>
+    
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    </button>
+    
+    <!-- Overlay -->
+    <div id="overlay" class="overlay" onclick="closeMobileMenu()"></div>
+    
+    <!-- Mobile Sidebar -->
+    <div id="mobileSidebar" class="mobile-sidebar glass">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div class="text-xl font-bold gradient-text">Admin Panel</div>
+                <button onclick="closeMobileMenu()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="glass-card rounded-xl p-4 mb-4">
+                <div class="text-sm text-gray-400 mb-1">Logged in as</div>
+                <div id="mobileAdminEmail" class="font-semibold text-purple-300 truncate"></div>
+            </div>
+            <div class="glass-card rounded-xl p-4 mb-4">
+                <div class="text-sm text-gray-400 mb-2">Quick Stats</div>
+                <div class="space-y-2">
+                    <div class="flex justify-between"><span class="text-sm">Total Materials</span><span id="mobileTotalMaterials" class="font-bold text-purple-400">0</span></div>
+                    <div class="flex justify-between"><span class="text-sm">Students</span><span id="mobileTotalStudents" class="font-bold text-purple-400">0</span></div>
                 </div>
             </div>
+            <button id="mobileLogoutBtn" class="w-full py-3 bg-red-600/80 hover:bg-red-600 rounded-xl transition font-semibold">Logout</button>
         </div>
-
-        <!-- Main Content -->
-        <div class="ml-72 flex-1 overflow-y-auto">
-            <div class="container mx-auto px-8 py-8">
-                <div class="mb-8">
-                    <h1 class="text-4xl font-bold mb-2">Admin Dashboard</h1>
-                    <p class="text-gray-400">Manage and publish learning materials for your students</p>
+    </div>
+    
+    <!-- Desktop Sidebar -->
+    <div class="desktop-sidebar glass fixed left-0 top-0 w-72 h-full overflow-y-auto">
+        <div class="p-6">
+            <div class="flex items-center space-x-3 mb-8">
+                <div class="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
                 </div>
+                <div class="text-xl font-bold gradient-text">Admin Panel</div>
+            </div>
+            <div class="space-y-6">
+                <div class="glass-card rounded-xl p-4">
+                    <div class="text-sm text-gray-400 mb-1">Logged in as</div>
+                    <div id="adminEmail" class="font-semibold text-purple-300 truncate"></div>
+                </div>
+                <div class="glass-card rounded-xl p-4">
+                    <div class="text-sm text-gray-400 mb-2">Quick Stats</div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between"><span class="text-sm">Total Materials</span><span id="totalMaterials" class="font-bold text-purple-400">0</span></div>
+                        <div class="flex justify-between"><span class="text-sm">Students</span><span id="totalStudents" class="font-bold text-purple-400">0</span></div>
+                    </div>
+                </div>
+                <button id="desktopLogoutBtn" class="w-full py-3 bg-red-600/80 hover:bg-red-600 rounded-xl transition font-semibold">Logout</button>
+            </div>
+        </div>
+    </div>
 
-                <!-- Create Post Section -->
-                <div class="glass-card rounded-2xl p-8 mb-8">
-                    <h2 class="text-2xl font-bold mb-6 flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Share New Learning Material
-                    </h2>
+    <!-- Main Content -->
+    <div class="main-content lg:ml-72">
+        <div class="container mx-auto px-4 py-6 lg:px-8 lg:py-8">
+            <div class="mb-6 lg:mb-8">
+                <h1 class="text-3xl lg:text-4xl font-bold mb-2">Admin Dashboard</h1>
+                <p class="text-gray-400 text-sm lg:text-base">Manage and publish learning materials for your students</p>
+            </div>
+
+            <!-- Create Post Section -->
+            <div class="glass-card rounded-2xl p-5 lg:p-8 mb-6 lg:mb-8">
+                <h2 class="text-xl lg:text-2xl font-bold mb-5 lg:mb-6 flex items-center">
+                    <svg class="w-5 h-5 lg:w-6 lg:h-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Share New Learning Material
+                </h2>
+                
+                <form id="createPostForm" class="space-y-5 lg:space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Title *</label>
+                        <input type="text" id="postTitle" required placeholder="e.g., Introduction to Python Programming"
+                            class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 transition">
+                    </div>
                     
-                    <form id="createPostForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Description</label>
+                        <textarea id="postDescription" rows="3" placeholder="Describe what students will learn..."
+                            class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 transition"></textarea>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:gap-6">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Title *</label>
-                            <input type="text" id="postTitle" required placeholder="e.g., Introduction to Python Programming"
-                                class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 transition">
+                            <label class="block text-sm font-medium mb-2">Audience</label>
+                            <select id="postAudience" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500">
+                                <option value="all">📚 General (All Students)</option>
+                                <option value="student">🎓 Student Exclusive</option>
+                            </select>
                         </div>
-                        
                         <div>
-                            <label class="block text-sm font-medium mb-2">Description</label>
-                            <textarea id="postDescription" rows="3" placeholder="Describe what students will learn..."
-                                class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 transition"></textarea>
+                            <label class="block text-sm font-medium mb-2">Material Type</label>
+                            <select id="postType" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500">
+                                <option value="file">📁 Document</option>
+                                <option value="video">🎥 Video</option>
+                                <option value="image">🖼️ Image</option>
+                                <option value="pdf">📄 PDF</option>
+                            </select>
                         </div>
-                        
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Audience</label>
-                                <select id="postAudience" 
-                                    class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500">
-                                    <option value="all">📚 General (All Students)</option>
-                                    <option value="student">🎓 Student Exclusive</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Material Type</label>
-                                <select id="postType" 
-                                    class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500">
-                                    <option value="file">📁 Document</option>
-                                    <option value="video">🎥 Video</option>
-                                    <option value="image">🖼️ Image</option>
-                                    <option value="pdf">📄 PDF</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Upload File *</label>
-                            <div class="file-upload-area glass border-2 border-dashed border-gray-600 rounded-xl p-8 text-center transition">
-                                <input type="file" id="postFile" accept="image/*,video/*,.pdf" class="hidden">
-                                <div id="fileInfo">
-                                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                                    </svg>
-                                    <p class="text-gray-400">Click to upload or drag and drop</p>
-                                    <p class="text-xs text-gray-500 mt-2">Supports: Images, Videos, PDFs (Max 50MB)</p>
-                                </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Upload File *</label>
+                        <div class="file-upload-area glass border-2 border-dashed border-gray-600 rounded-xl p-6 lg:p-8 text-center transition">
+                            <input type="file" id="postFile" accept="image/*,video/*,.pdf" class="hidden">
+                            <div id="fileInfo">
+                                <svg class="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-2 lg:mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-gray-400 text-sm">Click to upload or drag and drop</p>
+                                <p class="text-xs text-gray-500 mt-2">Supports: Images, Videos, PDFs (Max 50MB)</p>
                             </div>
                         </div>
-                        
-                        <button type="submit" 
-                            class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-semibold hover:opacity-90 transition transform hover:scale-[1.02] shadow-lg">
-                            📤 Publish Material
-                        </button>
-                    </form>
-                </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-semibold hover:opacity-90 transition shadow-lg">
+                        📤 Publish Material
+                    </button>
+                </form>
+            </div>
 
-                <!-- Posts Section -->
-                <div class="glass-card rounded-2xl p-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold">📖 Published Materials</h2>
-                        <button id="refreshBtn" class="px-4 py-2 bg-purple-600/50 rounded-lg hover:bg-purple-600 transition text-sm">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                    <div id="postsContainer" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Posts will be loaded here -->
-                    </div>
+            <!-- Posts Section -->
+            <div class="glass-card rounded-2xl p-5 lg:p-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 lg:mb-6">
+                    <h2 class="text-xl lg:text-2xl font-bold">📖 Published Materials</h2>
+                    <button id="refreshBtn" class="px-4 py-2 bg-purple-600/50 rounded-lg hover:bg-purple-600 transition text-sm w-full sm:w-auto">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div id="postsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+                    <!-- Posts will be loaded here -->
                 </div>
             </div>
         </div>
@@ -228,5 +209,60 @@
 
     <script src="./js/supabase.js"></script>
     <script src="./js/admin.js"></script>
+    <script>
+        // Mobile menu functions
+        function toggleMobileMenu() {
+            document.getElementById('mobileSidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('show');
+        }
+        
+        function closeMobileMenu() {
+            document.getElementById('mobileSidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('show');
+        }
+        
+        // Update mobile stats
+        function updateMobileStats(materials, students) {
+            const mobileMaterials = document.getElementById('mobileTotalMaterials');
+            const mobileStudents = document.getElementById('mobileTotalStudents');
+            if (mobileMaterials) mobileMaterials.textContent = materials;
+            if (mobileStudents) mobileStudents.textContent = students;
+        }
+        
+        // Update mobile email
+        function updateMobileEmail(email) {
+            const mobileEmail = document.getElementById('mobileAdminEmail');
+            if (mobileEmail) mobileEmail.textContent = email;
+        }
+        
+        // Close menu on window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) closeMobileMenu();
+        });
+        
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+        
+        // Install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.createElement('div');
+            btn.innerHTML = '<div class="fixed bottom-4 right-4 bg-purple-600 rounded-full p-3 shadow-lg cursor-pointer z-50 animate-bounce"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>';
+            btn.onclick = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                    btn.remove();
+                }
+            };
+            document.body.appendChild(btn);
+            setTimeout(() => btn.remove(), 30000);
+        });
+    </script>
 </body>
 </html>
