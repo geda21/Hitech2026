@@ -42,6 +42,11 @@
             }
         }
         
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
         .glass {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
@@ -169,6 +174,23 @@
         .stat-number {
             animation: fadeInUp 0.5s ease-out;
         }
+        
+        .bookmark-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .bookmark-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .timer-digit {
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .streak-fire {
+            animation: pulse 1s ease-in-out infinite;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white overflow-x-hidden">
@@ -251,6 +273,16 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                         </svg>
                         <span class="font-medium">My Profile</span>
+                    </div>
+                </div>
+                
+                <!-- Timer Button -->
+                <div class="nav-item p-3 rounded-xl cursor-pointer transition-all" onclick="openTimer()">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">Focus Timer ⏱️</span>
                     </div>
                 </div>
             </div>
@@ -342,41 +374,77 @@
                 </div>
                 
                 <div id="profileRoom" class="content-pane hidden">
-                    <div class="glass-card rounded-2xl p-8">
-                        <div class="flex items-center space-x-6 mb-8">
-                            <div class="w-32 h-32 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center">
-                                <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 id="profileName" class="text-3xl font-bold"></h2>
-                                <p id="profileEmail" class="text-gray-400 mt-1"></p>
-                                <div class="mt-3 flex space-x-2">
-                                    <span class="px-3 py-1 bg-purple-600/30 rounded-full text-sm">Student</span>
-                                    <span class="px-3 py-1 bg-green-600/30 rounded-full text-sm">Active Member</span>
-                                </div>
+                    <!-- Quick Stats Dashboard -->
+                    <div class="grid md:grid-cols-4 gap-4 mb-8">
+                        <div class="glass p-4 rounded-xl text-center">
+                            <div class="text-3xl mb-2">🔥</div>
+                            <div class="text-2xl font-bold gradient-text" id="studyStreak">0</div>
+                            <div class="text-xs text-gray-400">Day Streak</div>
+                        </div>
+                        <div class="glass p-4 rounded-xl text-center">
+                            <div class="text-3xl mb-2">⏱️</div>
+                            <div class="text-2xl font-bold gradient-text" id="quickStudyTime">0</div>
+                            <div class="text-xs text-gray-400">Weekly Study</div>
+                        </div>
+                        <div class="glass p-4 rounded-xl text-center">
+                            <div class="text-3xl mb-2">✅</div>
+                            <div class="text-2xl font-bold gradient-text" id="quickTasksDone">0</div>
+                            <div class="text-xs text-gray-400">Tasks Done</div>
+                        </div>
+                        <div class="glass p-4 rounded-xl text-center">
+                            <div class="text-3xl mb-2">🎯</div>
+                            <div class="text-2xl font-bold gradient-text" id="quickGoals">0</div>
+                            <div class="text-xs text-gray-400">Goals Met</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quote of the Day -->
+                    <div class="glass-card rounded-2xl p-6 mb-8">
+                        <div class="flex items-center space-x-2 mb-4">
+                            <span class="text-2xl">💭</span>
+                            <h3 class="text-xl font-bold">Quote of the Day</h3>
+                        </div>
+                        <div id="quoteOfDay" class="text-center">
+                            <div class="text-lg italic">Loading...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Weekly Goal -->
+                    <div class="glass-card rounded-2xl p-6 mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Weekly Goal</h3>
+                            <div class="flex space-x-2">
+                                <input type="number" id="weeklyGoal" class="w-20 px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-center" value="5">
+                                <button onclick="setWeeklyGoal()" class="px-3 py-1 bg-purple-600 rounded-lg text-sm">Set</button>
                             </div>
                         </div>
-                        
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div class="glass p-4 rounded-xl">
-                                <div class="text-2xl font-bold gradient-text" id="studyStats">0</div>
-                                <div class="text-sm text-gray-400">Materials Studied</div>
+                        <div class="mb-2">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Progress</span>
+                                <span id="goalProgressText">0/5 materials</span>
                             </div>
-                            <div class="glass p-4 rounded-xl">
-                                <div class="text-2xl font-bold gradient-text" id="notesStats">0</div>
-                                <div class="text-sm text-gray-400">Notes Created</div>
-                            </div>
-                            <div class="glass p-4 rounded-xl">
-                                <div class="text-2xl font-bold gradient-text" id="tasksStats">0</div>
-                                <div class="text-sm text-gray-400">Tasks Completed</div>
-                            </div>
-                            <div class="glass p-4 rounded-xl">
-                                <div class="text-2xl font-bold gradient-text" id="downloadsStats">0</div>
-                                <div class="text-sm text-gray-400">Downloads</div>
+                            <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="goalProgress" class="h-full bg-gradient-to-r from-purple-600 to-pink-600 progress-bar" style="width: 0%"></div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Study Streak Calendar -->
+                    <div class="glass-card rounded-2xl p-6 mb-8">
+                        <div class="flex items-center space-x-2 mb-4">
+                            <span class="text-2xl">📅</span>
+                            <h3 class="text-xl font-bold">Study Streak Calendar</h3>
+                        </div>
+                        <div id="streakCalendar"></div>
+                    </div>
+                    
+                    <!-- Bookmarks Section -->
+                    <div class="glass-card rounded-2xl p-6">
+                        <div class="flex items-center space-x-2 mb-4">
+                            <span class="text-2xl">⭐</span>
+                            <h3 class="text-xl font-bold">My Bookmarks</h3>
+                        </div>
+                        <div id="bookmarksList"></div>
                     </div>
                 </div>
             </div>
@@ -396,7 +464,26 @@
         </div>
     </div>
 
+    <!-- Timer Modal -->
+    <div id="timerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 hidden">
+        <div class="glass-card rounded-2xl p-8 w-full max-w-md mx-4 text-center">
+            <div class="text-6xl mb-4">⏱️</div>
+            <h3 class="text-2xl font-bold mb-4">Focus Timer</h3>
+            <div id="timerDisplay" class="text-6xl font-mono font-bold mb-6 gradient-text timer-digit">25:00</div>
+            <div class="flex justify-center space-x-3 mb-6">
+                <button onclick="startTimer()" class="px-6 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition">Start</button>
+                <button onclick="pauseTimer()" class="px-6 py-2 bg-yellow-600 rounded-lg hover:bg-yellow-700 transition">Pause</button>
+                <button onclick="resetTimer()" class="px-6 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition">Reset</button>
+            </div>
+            <div class="text-sm text-gray-400">
+                <div class="mb-2">Today's Focus: <span id="todayFocusTime" class="text-purple-400 font-bold">0</span> minutes</div>
+                <div>Weekly Focus: <span id="weeklyFocusTime" class="text-purple-400 font-bold">0</span> minutes</div>
+            </div>
+            <button onclick="closeTimerModal()" class="mt-4 text-gray-400 hover:text-white">Close</button>
+        </div>
+    </div>
+
     <script src="./js/supabase.js"></script>
     <script src="./js/dashboard.js"></script>
 </body>
-</html>
+    </html>
