@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - Hi Tech Academy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .bounce { animation: bounce 1s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white min-h-screen flex items-center justify-center">
+    <div class="text-center px-6"><div class="text-8xl mb-6 bounce">📡</div><h1 class="text-3xl font-bold mb-4">You're Offline</h1><p class="text-gray-400 mb-6">Check your internet connection</p><button onclick="location.reload()" class="px-6 py-3 bg-purple-600 rounded-xl hover:bg-purple-700 transition">Try Again</button></div>
+</body>
+</html>
