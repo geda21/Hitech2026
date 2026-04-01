@@ -1,9 +1,6 @@
-// Global variables
 let allPosts = [];
-let currentUser = null;
 let currentUserProfile = null;
 
-// Check authentication and load dashboard
 async function initDashboard() {
     showLoading();
     
@@ -11,9 +8,7 @@ async function initDashboard() {
         const session = await checkAuth();
         if (!session) return;
         
-        currentUser = session.user;
-        
-        // Get user profile from users table
+        // Get user profile
         const { data: userProfile, error: profileError } = await window.supabaseClient
             .from('users')
             .select('*')
@@ -21,9 +16,7 @@ async function initDashboard() {
             .single();
         
         if (profileError) {
-            console.error('Profile fetch error:', profileError);
-            
-            // Try to create profile if it doesn't exist
+            // Create profile if missing
             const { data: newProfile, error: createError } = await window.supabaseClient
                 .from('users')
                 .insert({
@@ -36,18 +29,13 @@ async function initDashboard() {
                 .select()
                 .single();
             
-            if (createError) {
-                console.error('Profile creation error:', createError);
-                showAlert('Error creating profile. Please contact support.');
-                return;
-            }
-            
+            if (createError) throw createError;
             currentUserProfile = newProfile;
         } else {
             currentUserProfile = userProfile;
         }
         
-        // Check role matches page
+        // Check admin access
         const currentPage = window.location.pathname;
         if (currentPage.includes('admin.html') && currentUserProfile.role !== 'admin') {
             showAlert('Access denied. Admin only.');
@@ -58,18 +46,12 @@ async function initDashboard() {
         // Display user info
         if (currentUserProfile.role === 'admin') {
             const adminEmailSpan = document.getElementById('adminEmail');
-            if (adminEmailSpan) {
-                adminEmailSpan.textContent = session.user.email;
-            }
+            if (adminEmailSpan) adminEmailSpan.textContent = session.user.email;
         } else {
             const studentNameSpan = document.getElementById('studentName');
             const studentEmailSpan = document.getElementById('studentEmail');
-            if (studentNameSpan) {
-                studentNameSpan.textContent = currentUserProfile.full_name || session.user.email.split('@')[0];
-            }
-            if (studentEmailSpan) {
-                studentEmailSpan.textContent = session.user.email;
-            }
+            if (studentNameSpan) studentNameSpan.textContent = currentUserProfile.full_name;
+            if (studentEmailSpan) studentEmailSpan.textContent = session.user.email;
         }
         
         // Load posts
@@ -78,12 +60,11 @@ async function initDashboard() {
         // Setup logout
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
+            logoutBtn.onclick = async () => {
                 showLoading();
                 await window.supabaseClient.auth.signOut();
                 window.location.href = '/login.html';
-                hideLoading();
-            });
+            };
         }
         
         // Setup create post form for admin
@@ -92,20 +73,19 @@ async function initDashboard() {
             setupCreatePostForm(createPostForm);
         }
         
-        // Setup search and filter for student
+        // Setup search for students
         if (currentUserProfile.role === 'student') {
             setupSearchAndFilter();
         }
         
     } catch (error) {
-        console.error('Dashboard init error:', error);
-        showAlert('Error loading dashboard: ' + error.message);
+        console.error('Dashboard error:', error);
+        showAlert('Error loading dashboard');
     } finally {
         hideLoading();
     }
 }
 
-// Load posts
 async function loadPosts() {
     try {
         let query = window.supabaseClient
@@ -113,13 +93,11 @@ async function loadPosts() {
             .select('*')
             .order('created_at', { ascending: false });
         
-        // Filter posts for students
         if (currentUserProfile.role === 'student') {
             query = query.or(`audience.eq.student,audience.eq.all`);
         }
         
         const { data: posts, error } = await query;
-        
         if (error) throw error;
         
         allPosts = posts || [];
@@ -129,14 +107,12 @@ async function loadPosts() {
         } else {
             displayAdminPosts(allPosts);
         }
-        
     } catch (error) {
         console.error('Load posts error:', error);
-        showAlert('Error loading posts: ' + error.message);
+        showAlert('Error loading posts');
     }
 }
 
-// Display posts for admin
 function displayAdminPosts(posts) {
     const container = document.getElementById('postsContainer');
     if (!container) return;
@@ -158,7 +134,7 @@ function displayAdminPosts(posts) {
             <div class="p-6">
                 <div class="flex justify-between items-start mb-3">
                     <h3 class="text-xl font-bold">${escapeHtml(post.title)}</h3>
-                    <button onclick="deletePost('${post.id}')" class="text-red-400 hover:text-red-300 transition">
+                    <button onclick="deletePost('${post.id}')" class="text-red-400 hover:text-red-300">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
@@ -181,7 +157,6 @@ function displayAdminPosts(posts) {
     `).join('');
 }
 
-// Display posts for students
 function displayStudentPosts(posts) {
     const container = document.getElementById('postsContainer');
     if (!container) return;
@@ -203,7 +178,7 @@ function displayStudentPosts(posts) {
             <div class="p-6">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-2">
-                        ${getTypeIcon(post.type)}
+                        <span class="text-lg">${getTypeIcon(post.type)}</span>
                         <span class="text-xs px-2 py-1 bg-purple-600/30 rounded-full">${post.type.toUpperCase()}</span>
                     </div>
                     <div class="text-xs text-gray-500">${new Date(post.created_at).toLocaleDateString()}</div>
@@ -221,15 +196,14 @@ function displayStudentPosts(posts) {
     `).join('');
 }
 
-// Render file preview
 function renderFilePreview(post) {
     if (post.type === 'image') {
-        return `<img src="${post.file_url}" alt="${post.title}" class="w-full h-48 object-cover">`;
+        return `<img src="${post.file_url}" class="w-full h-48 object-cover">`;
     } else if (post.type === 'video') {
         return `
-            <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden">
+            <div style="position:relative;padding-bottom:56.25%">
                 <video style="position:absolute;top:0;left:0;width:100%;height:100%" controls>
-                    <source src="${post.file_url}" type="video/mp4">
+                    <source src="${post.file_url}">
                 </video>
             </div>
         `;
@@ -244,50 +218,26 @@ function renderFilePreview(post) {
     }
 }
 
-// Get type icon
 function getTypeIcon(type) {
-    const icons = {
-        'image': '🖼️',
-        'video': '🎥',
-        'pdf': '📄',
-        'file': '📁'
-    };
-    return `<span class="text-lg">${icons[type] || '📁'}</span>`;
+    const icons = { 'image': '🖼️', 'video': '🎥', 'pdf': '📄', 'file': '📁' };
+    return icons[type] || '📁';
 }
 
-// Setup create post form
 function setupCreatePostForm(form) {
     const fileInput = document.getElementById('postFile');
     const fileInfo = document.getElementById('fileInfo');
     
     if (fileInput && fileInfo) {
-        fileInput.addEventListener('change', (e) => {
+        fileInput.onchange = (e) => {
             if (e.target.files[0]) {
-                fileInfo.innerHTML = `
-                    <svg class="w-12 h-12 mx-auto mb-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <div class="text-purple-400">${e.target.files[0].name}</div>
-                `;
-            } else {
-                fileInfo.innerHTML = `
-                    <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                    Click to upload or drag and drop
-                `;
+                fileInfo.innerHTML = `<div class="text-purple-400">✅ ${e.target.files[0].name}</div>`;
             }
-        });
+        };
         
-        const fileLabel = document.querySelector('.file-upload-area');
-        if (fileLabel) {
-            fileLabel.addEventListener('click', () => {
-                fileInput.click();
-            });
-        }
+        document.querySelector('.file-upload-area')?.addEventListener('click', () => fileInput.click());
     }
     
-    form.addEventListener('submit', async (e) => {
+    form.onsubmit = async (e) => {
         e.preventDefault();
         showLoading();
         
@@ -297,116 +247,77 @@ function setupCreatePostForm(form) {
             const audience = document.getElementById('postAudience').value;
             const file = fileInput.files[0];
             
-            if (!title || !file) {
-                throw new Error('Please fill in title and select a file');
-            }
+            if (!title || !file) throw new Error('Please fill in title and select a file');
             
             const fileName = `${Date.now()}_${file.name}`;
-            const { error: uploadError } = await window.supabaseClient.storage
-                .from('files')
-                .upload(fileName, file);
-            
+            const { error: uploadError } = await window.supabaseClient.storage.from('files').upload(fileName, file);
             if (uploadError) throw uploadError;
             
-            const { data: { publicUrl } } = window.supabaseClient.storage
-                .from('files')
-                .getPublicUrl(fileName);
+            const { data: { publicUrl } } = window.supabaseClient.storage.from('files').getPublicUrl(fileName);
             
             let fileType = 'file';
             if (file.type.startsWith('image/')) fileType = 'image';
             else if (file.type.startsWith('video/')) fileType = 'video';
             else if (file.type === 'application/pdf') fileType = 'pdf';
             
-            const { error: insertError } = await window.supabaseClient
-                .from('posts')
-                .insert({
-                    title,
-                    description,
-                    audience,
-                    file_url: publicUrl,
-                    type: fileType,
-                    user_id: currentUser.id,
-                    created_at: new Date().toISOString()
-                });
+            const { error: insertError } = await window.supabaseClient.from('posts').insert({
+                title, description, audience, file_url: publicUrl, type: fileType,
+                user_id: (await window.supabaseClient.auth.getSession()).data.session?.user.id,
+                created_at: new Date().toISOString()
+            });
             
             if (insertError) throw insertError;
             
-            showAlert('Material published successfully!', false);
+            showAlert('Material published!', false);
             form.reset();
-            if (fileInfo) {
-                fileInfo.innerHTML = `
-                    <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                    Click to upload or drag and drop
-                `;
-            }
-            
+            if (fileInfo) fileInfo.innerHTML = 'Click to upload or drag and drop';
             await loadPosts();
             
         } catch (error) {
-            console.error('Create post error:', error);
-            showAlert(error.message || 'Error publishing material');
+            showAlert(error.message);
         } finally {
             hideLoading();
         }
-    });
+    };
 }
 
-// Setup search and filter for students
 function setupSearchAndFilter() {
     const searchInput = document.getElementById('searchInput');
     const typeFilter = document.getElementById('typeFilter');
     
-    const filterPosts = () => {
+    const filter = () => {
         const searchTerm = searchInput.value.toLowerCase();
         const type = typeFilter.value;
         
         let filtered = allPosts;
-        
         if (searchTerm) {
-            filtered = filtered.filter(post => 
-                post.title.toLowerCase().includes(searchTerm) || 
-                (post.description && post.description.toLowerCase().includes(searchTerm))
-            );
+            filtered = filtered.filter(p => p.title.toLowerCase().includes(searchTerm) || 
+                (p.description && p.description.toLowerCase().includes(searchTerm)));
         }
-        
-        if (type !== 'all') {
-            filtered = filtered.filter(post => post.type === type);
-        }
+        if (type !== 'all') filtered = filtered.filter(p => p.type === type);
         
         displayStudentPosts(filtered);
     };
     
-    if (searchInput) searchInput.addEventListener('input', filterPosts);
-    if (typeFilter) typeFilter.addEventListener('change', filterPosts);
+    if (searchInput) searchInput.oninput = filter;
+    if (typeFilter) typeFilter.onchange = filter;
 }
 
-// Delete post
 window.deletePost = async (postId) => {
-    if (!confirm('Are you sure you want to delete this material?')) return;
-    
+    if (!confirm('Delete this material?')) return;
     showLoading();
     try {
-        const { error } = await window.supabaseClient
-            .from('posts')
-            .delete()
-            .eq('id', postId);
-        
+        const { error } = await window.supabaseClient.from('posts').delete().eq('id', postId);
         if (error) throw error;
-        
-        showAlert('Material deleted successfully!', false);
+        showAlert('Material deleted!', false);
         await loadPosts();
-        
     } catch (error) {
-        console.error('Delete post error:', error);
-        showAlert(error.message || 'Error deleting material');
+        showAlert(error.message);
     } finally {
         hideLoading();
     }
 };
 
-// Helper function to escape HTML
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -414,5 +325,4 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize dashboard
 initDashboard();
