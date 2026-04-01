@@ -1,11 +1,1 @@
-{
-  "name": "Hi Tech Academy",
-  "short_name": "HiTech",
-  "description": "Premium learning platform for tech education",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#8b5cf6",
-  "orientation": "portrait",
-  "icons": [{"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%238b5cf6'/%3E%3Ctext x='50' y='70' text-anchor='middle' fill='white' font-size='50' font-weight='bold'%3EHT%3C/text%3E%3C/svg%3E", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
-}
+{"name":"Hi Tech Academy","short_name":"HiTech","description":"Premium learning platform","start_url":"/student.html","display":"standalone","background_color":"#0f172a","theme_color":"#8b5cf6","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%238b5cf6'/%3E%3Ctext x='50' y='70' text-anchor='middle' fill='white' font-size='50' font-weight='bold'%3EHT%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}
