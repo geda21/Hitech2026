@@ -8,10 +8,7 @@ if (document.getElementById('loginForm')) {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
-            if (!email || !password) {
-                throw new Error('Please enter email and password');
-            }
-            
+            // Login with Supabase Auth
             const { data, error } = await window.supabaseClient.auth.signInWithPassword({
                 email,
                 password
@@ -19,19 +16,15 @@ if (document.getElementById('loginForm')) {
             
             if (error) throw error;
             
-            if (!data.user) {
-                throw new Error('Login failed');
-            }
-            
-            // Check if user exists in users table
-            let { data: userData, error: userError } = await window.supabaseClient
+            // Get or create user profile
+            let { data: userData } = await window.supabaseClient
                 .from('users')
                 .select('*')
                 .eq('id', data.user.id)
                 .single();
             
-            // If user doesn't exist in users table, create them
-            if (userError || !userData) {
+            if (!userData) {
+                // Create new user profile
                 const { data: newUser, error: createError } = await window.supabaseClient
                     .from('users')
                     .insert({
@@ -44,11 +37,7 @@ if (document.getElementById('loginForm')) {
                     .select()
                     .single();
                 
-                if (createError) {
-                    console.error('User creation error:', createError);
-                    throw new Error('Failed to create user profile');
-                }
-                
+                if (createError) throw createError;
                 userData = newUser;
             }
             
@@ -61,7 +50,7 @@ if (document.getElementById('loginForm')) {
             
         } catch (error) {
             console.error('Login error:', error);
-            showAlert(error.message || 'Login failed. Please check your credentials.');
+            showAlert(error.message || 'Login failed');
         } finally {
             hideLoading();
         }
@@ -79,10 +68,6 @@ if (document.getElementById('signupForm')) {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
-            if (!fullName || !email || !password) {
-                throw new Error('Please fill in all fields');
-            }
-            
             if (password.length < 6) {
                 throw new Error('Password must be at least 6 characters');
             }
@@ -91,17 +76,13 @@ if (document.getElementById('signupForm')) {
             const { data, error } = await window.supabaseClient.auth.signUp({
                 email,
                 password,
-                options: {
-                    data: {
-                        full_name: fullName
-                    }
-                }
+                options: { data: { full_name: fullName } }
             });
             
             if (error) throw error;
             
             if (data.user) {
-                // Insert into users table with role 'student'
+                // Create user profile
                 const { error: insertError } = await window.supabaseClient
                     .from('users')
                     .insert({
@@ -114,7 +95,6 @@ if (document.getElementById('signupForm')) {
                 
                 if (insertError) {
                     console.error('Insert error:', insertError);
-                    // If insert fails but user is created, still show success
                     showAlert('Account created! Please login.', false);
                     window.location.href = '/login.html';
                     return;
@@ -125,14 +105,14 @@ if (document.getElementById('signupForm')) {
             }
         } catch (error) {
             console.error('Signup error:', error);
-            showAlert(error.message || 'Signup failed. Please try again.');
+            showAlert(error.message || 'Signup failed');
         } finally {
             hideLoading();
         }
     });
 }
 
-// Check if user is already logged in on auth pages
+// Check if already logged in
 async function checkAuthRedirect() {
     try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -144,19 +124,15 @@ async function checkAuthRedirect() {
                 .single();
             
             if (userData) {
-                if (userData.role === 'admin') {
-                    window.location.href = '/admin.html';
-                } else {
-                    window.location.href = '/student.html';
-                }
+                window.location.href = userData.role === 'admin' ? '/admin.html' : '/student.html';
             }
         }
     } catch (error) {
-        console.error('Auth redirect check error:', error);
+        console.error('Auth redirect error:', error);
     }
 }
 
-// Check auth on auth pages
+// Run auth check on login/signup pages
 if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
     checkAuthRedirect();
 }
