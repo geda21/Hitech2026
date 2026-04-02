@@ -13,6 +13,10 @@ let isTimerRunning = false;
 let currentSession = 'focus';
 let isOfflineMode = false;
 
+// Gemini AI API Key (YOUR KEY)
+const GEMINI_API_KEY = 'AIzaSyDFgVCQMUOTN5ejOuWEZSeZANO72I2Co6Q';
+let chatHistory = [];
+
 // Room navigation
 const roomsData = {
     study: { title: 'Study Room', desc: 'Your learning materials and resources' },
@@ -20,6 +24,7 @@ const roomsData = {
     books: { title: 'Books Room', desc: 'All available books and resources' },
     downloads: { title: 'Downloads Room', desc: 'Your downloaded materials' },
     todo: { title: 'Plan & To-Do List', desc: 'Organize your tasks and goals' },
+    ai: { title: 'AI Tutor', desc: 'Ask questions and get instant answers' },
     profile: { title: 'My Profile', desc: 'Your personal information and stats' }
 };
 
@@ -120,6 +125,9 @@ async function initDashboard() {
         
         // Load goals
         loadGoals();
+        
+        // Load AI chat history
+        loadChatHistory();
         
         // Setup navigation
         setupNavigation();
@@ -230,10 +238,8 @@ function loadOfflineData() {
         downloadedMaterials = data.downloads || [];
         bookmarkedMaterials = data.bookmarks || [];
         
-        // Update UI
         updateProfileDisplay();
         
-        // Display all data
         displayNotes();
         displayTasks();
         displayDownloads();
@@ -242,20 +248,17 @@ function loadOfflineData() {
         updateQuickStats();
         updateTodoProgress();
         
-        // Load timer data from localStorage
         loadTimerData();
         loadStudyStreak();
         loadQuoteOfTheDay();
         loadGoals();
+        loadChatHistory();
         
-        // Setup navigation
         setupNavigation();
         
-        // Show offline badge
         const badge = document.getElementById('offlineBadge');
         if (badge) badge.classList.add('show');
         
-        // Load sample materials from localStorage
         loadOfflineMaterials();
         
         console.log('Offline mode active');
@@ -293,21 +296,18 @@ function loadOfflineMaterials() {
 }
 
 function setupOfflineUI() {
-    // Make sure all rooms are visible
-    const rooms = ['study', 'notes', 'books', 'downloads', 'todo', 'profile'];
+    const rooms = ['study', 'notes', 'books', 'downloads', 'todo', 'ai', 'profile'];
     rooms.forEach(room => {
         const el = document.getElementById(`${room}Room`);
         if (el) el.classList.add('hidden');
     });
     document.getElementById('studyRoom').classList.remove('hidden');
     
-    // Update room title
     const roomTitle = document.getElementById('roomTitle');
     const roomDesc = document.getElementById('roomDescription');
     if (roomTitle) roomTitle.textContent = 'Study Room (Offline)';
     if (roomDesc) roomDesc.textContent = 'You are offline. Your saved notes and tasks are available.';
     
-    // Hide logout buttons in offline mode
     const logoutBtns = document.querySelectorAll('#desktopLogoutBtn, #mobileLogoutBtn');
     logoutBtns.forEach(btn => {
         if (btn) btn.style.display = 'none';
@@ -389,10 +389,13 @@ function displayStudyMaterials(posts) {
                 </div>
                 <h3 class="text-lg font-bold mb-2 group-hover:text-purple-400 transition">${escapeHtml(post.title)}</h3>
                 ${post.description ? `<p class="text-gray-300 text-sm mb-3 line-clamp-2">${escapeHtml(post.description)}</p>` : ''}
-                <div class="flex justify-between items-center mt-3 pt-3 border-t border-white/10">
+                <div class="flex flex-wrap justify-between items-center gap-2 mt-3 pt-3 border-t border-white/10">
                     <button onclick="event.stopPropagation(); downloadMaterial('${post.id}', '${escapeHtml(post.title)}', '${post.file_url}', '${post.type}')" class="text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         Download
+                    </button>
+                    <button onclick="event.stopPropagation(); explainWithAI('${escapeHtml(post.title)}', '${escapeHtml(post.description || '')}')" class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                        🤖 Explain with AI
                     </button>
                     <span class="text-xs text-gray-500">Click to view</span>
                 </div>
@@ -484,6 +487,161 @@ window.downloadMaterial = function(id, title, url, type) {
     if (currentUser) saveUserForOffline();
 };
 
+// ============ GEMINI AI TUTOR FUNCTIONS ============
+
+function loadChatHistory() {
+    const saved = localStorage.getItem(`hitech_ai_chat_${currentUser?.id}`);
+    if (saved) {
+        chatHistory = JSON.parse(saved);
+        displayChatMessages();
+    } else {
+        chatHistory = [];
+        displayChatMessages();
+    }
+}
+
+function saveChatHistory() {
+    localStorage.setItem(`hitech_ai_chat_${currentUser?.id}`, JSON.stringify(chatHistory));
+}
+
+function displayChatMessages() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    
+    if (chatHistory.length === 0) {
+        container.innerHTML = `
+            <div class="glass rounded-xl p-3">
+                <div class="flex items-start gap-2">
+                    <span class="text-xl">🤖</span>
+                    <div>
+                        <div class="font-semibold text-purple-400">AI Tutor</div>
+                        <div class="text-sm text-gray-300">Hi! I'm your AI tutor. Ask me anything about your studies!</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = chatHistory.map(msg => `
+        <div class="${msg.role === 'user' ? 'bg-purple-600/20' : 'glass'} rounded-xl p-3">
+            <div class="flex items-start gap-2">
+                <span class="text-xl">${msg.role === 'user' ? '👤' : '🤖'}</span>
+                <div>
+                    <div class="font-semibold ${msg.role === 'user' ? 'text-purple-400' : 'text-blue-400'}">
+                        ${msg.role === 'user' ? 'You' : 'AI Tutor'}
+                    </div>
+                    <div class="text-sm text-gray-300 whitespace-pre-wrap">${msg.content}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+    
+    // Add user message
+    chatHistory.push({ role: 'user', content: message, timestamp: Date.now() });
+    saveChatHistory();
+    displayChatMessages();
+    input.value = '';
+    
+    // Show typing indicator
+    const container = document.getElementById('chatMessages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'glass rounded-xl p-3';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="flex items-start gap-2">
+            <span class="text-xl">🤖</span>
+            <div>
+                <div class="font-semibold text-blue-400">AI Tutor</div>
+                <div class="typing-indicator flex gap-1 mt-1">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    `;
+    container.appendChild(typingDiv);
+    container.scrollTop = container.scrollHeight;
+    
+    try {
+        const response = await callGeminiAPI(message);
+        
+        document.getElementById('typingIndicator')?.remove();
+        
+        chatHistory.push({ role: 'assistant', content: response, timestamp: Date.now() });
+        saveChatHistory();
+        displayChatMessages();
+        
+    } catch (error) {
+        document.getElementById('typingIndicator')?.remove();
+        console.error('AI Error:', error);
+        
+        chatHistory.push({ role: 'assistant', content: 'Sorry, I encountered an error. Please check your API key or try again later.', timestamp: Date.now() });
+        saveChatHistory();
+        displayChatMessages();
+        showAlert('AI Error: ' + error.message);
+    }
+}
+
+async function callGeminiAPI(question) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const requestBody = {
+        contents: [{
+            parts: [{ text: question }]
+        }]
+    };
+    
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'API request failed');
+    }
+    
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+}
+
+function quickQuestion(question) {
+    document.getElementById('chatInput').value = question;
+    sendMessage();
+}
+
+function clearChatHistory() {
+    if (confirm('Clear all chat history?')) {
+        chatHistory = [];
+        saveChatHistory();
+        displayChatMessages();
+    }
+}
+
+async function explainWithAI(title, description) {
+    const prompt = `Explain this learning material in simple terms:\nTitle: ${title}\nDescription: ${description}\nProvide key points and why it's important to learn.`;
+    
+    // Switch to AI room
+    const aiNav = document.querySelector('.nav-item[data-room="ai"]');
+    if (aiNav) aiNav.click();
+    
+    // Wait a moment for UI to switch
+    setTimeout(async () => {
+        document.getElementById('chatInput').value = `Can you explain this material?\n\nTitle: ${title}\n${description ? `Description: ${description}` : ''}`;
+        await sendMessage();
+    }, 300);
+}
+
+// Notes functions
 function displayNotes() {
     const container = document.getElementById('notesList');
     if (!container) return;
@@ -795,7 +953,7 @@ function updateGoalProgress() {
 
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
-    const roomsList = ['study', 'notes', 'books', 'downloads', 'todo', 'profile'];
+    const roomsList = ['study', 'notes', 'books', 'downloads', 'todo', 'ai', 'profile'];
     navItems.forEach(item => {
         const room = item.dataset.room;
         if (!room) return;
