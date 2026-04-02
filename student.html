@@ -14,53 +14,431 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .glass-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); transition: all 0.3s ease; }
-        .glass-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.12); border-color: rgba(139,92,246,0.5); }
-        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .nav-item { transition: all 0.3s ease; cursor: pointer; }
-        .nav-item.active { background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2)); border-left: 3px solid #8b5cf6; }
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 9999; display: none; }
-        .spinner { width: 50px; height: 50px; border: 3px solid rgba(139,92,246,0.3); border-top: 3px solid #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .glass {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .glass-card {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(139,92,246,0.5);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .nav-item {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(139,92,246,0.2), transparent);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-item:hover::before {
+            width: 100%;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2));
+            border-left: 3px solid #8b5cf6;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0.95), rgba(0,0,0,0.99));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(139,92,246,0.3);
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .desktop-sidebar { position: fixed; left: 0; top: 0; width: 280px; height: 100vh; overflow-y: auto; z-index: 100; }
         .main-content { margin-left: 280px; min-height: 100vh; }
         .mobile-sidebar { position: fixed; top: 0; left: -100%; width: 85%; max-width: 320px; height: 100vh; z-index: 1000; transition: left 0.3s ease; overflow-y: auto; }
         .mobile-sidebar.open { left: 0; }
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; display: none; }
         .overlay.show { display: block; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.1); display: none; z-index: 100; padding: 0.5rem 0; }
-        .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0.5rem; transition: all 0.2s ease; cursor: pointer; }
-        .bottom-nav-item.active { color: #8b5cf6; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.1); display: none; z-index: 100; padding: 0.75rem 0; }
+        .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0.5rem; transition: all 0.2s ease; cursor: pointer; border-radius: 0.75rem; margin: 0 0.25rem; }
+        .bottom-nav-item.active { background: rgba(139,92,246,0.2); color: #8b5cf6; }
+        .bottom-nav-item:active { transform: scale(0.95); }
         .mobile-menu-btn { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: rgba(139,92,246,0.2); backdrop-filter: blur(10px); padding: 0.75rem; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; }
-        @media (max-width: 768px) { .desktop-sidebar { display: none; } .main-content { margin-left: 0 !important; padding-bottom: 70px; } .bottom-nav { display: flex; } .mobile-menu-btn { display: block; } .materials-grid { grid-template-columns: 1fr !important; } }
-        .materials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+        
+        @media (max-width: 768px) {
+            .desktop-sidebar { display: none; }
+            .main-content { margin-left: 0 !important; padding-bottom: 80px; padding-top: 10px; }
+            .bottom-nav { display: flex; }
+            .mobile-menu-btn { display: block; }
+            .materials-grid { grid-template-columns: 1fr !important; gap: 1rem !important; }
+        }
+        
+        @media (min-width: 769px) {
+            .mobile-sidebar, .overlay { display: none !important; }
+        }
+        
+        .materials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; }
         .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 1rem; }
         .video-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        .progress-bar { transition: width 0.8s ease; }
-        ::-webkit-scrollbar { width: 8px; }
+        .progress-bar { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .offline-badge { position: fixed; top: 10px; right: 10px; background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; z-index: 1000; display: none; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .offline-badge.show { display: block; animation: pulse 2s infinite; }
+        
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
         ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px; }
-        .offline-badge { position: fixed; top: 10px; right: 10px; background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; z-index: 1000; display: none; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        .offline-badge.show { display: block; }
+        
+        .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+        .badge-purple { background: rgba(139,92,246,0.2); color: #a78bfa; }
+        .badge-green { background: rgba(34,197,94,0.2); color: #4ade80; }
+        
+        .stat-card { transition: all 0.3s ease; cursor: pointer; }
+        .stat-card:hover { transform: translateY(-5px); background: rgba(139,92,246,0.15); }
+        
+        .todo-item { transition: all 0.2s ease; cursor: pointer; }
+        .todo-item:hover { transform: translateX(5px); background: rgba(139,92,246,0.1); }
+        
+        .bookmark-btn { transition: all 0.2s ease; }
+        .bookmark-btn:hover { transform: scale(1.2); }
+        
+        .welcome-animation { animation: fadeIn 0.6s ease-out; }
+        
+        /* Chat styles */
+        #chatMessages {
+            scroll-behavior: smooth;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #a78bfa;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
     <div id="loading"><div class="spinner"></div></div>
     <div id="offlineBadge" class="offline-badge">📡 OFFLINE MODE</div>
     
-    <button class="mobile-menu-btn" onclick="toggleMobileMenu()"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    </button>
+    
     <div id="overlay" class="overlay" onclick="closeMobileMenu()"></div>
-    <div id="mobileSidebar" class="mobile-sidebar glass"><div class="p-6"><div class="flex justify-between items-center mb-6"><div class="text-xl font-bold gradient-text">Hi Tech Academy</div><button onclick="closeMobileMenu()" class="text-gray-400 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="text-center mb-6"><div class="w-20 h-20 mx-auto bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mb-3"><svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div><h3 id="mobileStudentName" class="font-bold">Loading...</h3><p id="mobileStudentEmail" class="text-xs text-gray-400 mt-1">student@email.com</p></div><div class="space-y-2"><div class="nav-item p-3 rounded-xl" data-room="study" onclick="switchRoomMobile('study')"><div class="flex items-center space-x-3"><span class="text-xl">📚</span><span>Study Room</span></div></div><div class="nav-item p-3 rounded-xl" data-room="notes" onclick="switchRoomMobile('notes')"><div class="flex items-center space-x-3"><span class="text-xl">📝</span><span>Note Room</span></div></div><div class="nav-item p-3 rounded-xl" data-room="books" onclick="switchRoomMobile('books')"><div class="flex items-center space-x-3"><span class="text-xl">📖</span><span>Books Room</span></div></div><div class="nav-item p-3 rounded-xl" data-room="downloads" onclick="switchRoomMobile('downloads')"><div class="flex items-center space-x-3"><span class="text-xl">⬇️</span><span>Downloads</span></div></div><div class="nav-item p-3 rounded-xl" data-room="todo" onclick="switchRoomMobile('todo')"><div class="flex items-center space-x-3"><span class="text-xl">✅</span><span>To-Do List</span></div></div><div class="nav-item p-3 rounded-xl" data-room="profile" onclick="switchRoomMobile('profile')"><div class="flex items-center space-x-3"><span class="text-xl">👤</span><span>My Profile</span></div></div><div class="nav-item p-3 rounded-xl" onclick="openTimer(); closeMobileMenu();"><div class="flex items-center space-x-3"><span class="text-xl">⏱️</span><span>Focus Timer</span></div></div><button id="mobileLogoutBtn" class="w-full mt-4 py-3 bg-red-600/80 rounded-xl font-semibold">Logout</button></div></div></div>
-    <div class="desktop-sidebar glass"><div class="p-6"><div class="text-center mb-8"><div class="w-28 h-28 mx-auto bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mb-4"><svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div><h3 id="desktopStudentName" class="text-xl font-bold">Loading...</h3><p id="desktopStudentEmail" class="text-sm text-gray-400 mt-1">student@email.com</p><div class="mt-3 flex justify-center space-x-2"><span class="px-3 py-1 bg-purple-600/30 rounded-full text-xs">⭐ Student</span><span class="px-3 py-1 bg-green-600/30 rounded-full text-xs">🟢 Active</span></div></div><div class="space-y-2"><div class="nav-item p-3 rounded-xl cursor-pointer active" data-room="study"><div class="flex items-center space-x-3"><span class="text-xl">📚</span><span>Study Room</span></div></div><div class="nav-item p-3 rounded-xl cursor-pointer" data-room="notes"><div class="flex items-center space-x-3"><span class="text-xl">📝</span><span>Note Room</span></div></div><div class="nav-item p-3 rounded-xl cursor-pointer" data-room="books"><div class="flex items-center space-x-3"><span class="text-xl">📖</span><span>Books Room</span></div></div><div class="nav-item p-3 rounded-xl cursor-pointer" data-room="downloads"><div class="flex items-center space-x-3"><span class="text-xl">⬇️</span><span>Downloads Room</span></div></div><div class="nav-item p-3 rounded-xl cursor-pointer" data-room="todo"><div class="flex items-center space-x-3"><span class="text-xl">✅</span><span>Plan & To-Do</span></div></div><div class="nav-item p-3 rounded-xl cursor-pointer" data-room="profile"><div class="flex items-center space-x-3"><span class="text-xl">👤</span><span>My Profile</span></div></div><div class="nav-item p-3 rounded-xl cursor-pointer" onclick="openTimer()"><div class="flex items-center space-x-3"><span class="text-xl">⏱️</span><span>Focus Timer</span></div></div></div><button id="desktopLogoutBtn" class="w-full mt-8 py-3 bg-red-600/80 hover:bg-red-600 rounded-xl font-semibold transition">Logout</button></div></div>
-    <div class="main-content"><div class="container mx-auto px-6 py-8"><div class="mb-8"><h1 id="roomTitle" class="text-4xl font-black mb-2 gradient-text">Study Room</h1><p id="roomDescription" class="text-gray-400">Your learning materials and resources</p></div><div id="studyRoom" class="content-pane"><div class="materials-grid" id="studyMaterials"></div></div><div id="notesRoom" class="content-pane hidden"><div class="glass-card rounded-2xl p-6"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold flex items-center gap-2"><span class="text-3xl">📝</span> My Notes</h2><button onclick="createNewNote()" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl hover:opacity-90 transition flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>New Note</button></div><div id="notesList" class="space-y-3"></div></div></div><div id="booksRoom" class="content-pane hidden"><div class="materials-grid" id="booksList"></div></div><div id="downloadsRoom" class="content-pane hidden"><div class="glass-card rounded-2xl p-6"><h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><span class="text-3xl">⬇️</span> Downloaded Materials</h2><div id="downloadsList" class="space-y-3"></div></div></div><div id="todoRoom" class="content-pane hidden"><div class="glass-card rounded-2xl p-6"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold flex items-center gap-2"><span class="text-3xl">✅</span> My Tasks</h2><div class="flex gap-3"><div class="px-3 py-1 bg-purple-600/30 rounded-full text-sm">Progress: <span id="todoProgress" class="font-bold text-purple-400">0</span>%</div><button onclick="addNewTask()" class="px-4 py-2 bg-purple-600 rounded-xl hover:bg-purple-700 transition">+ Add Task</button></div></div><div class="mb-6"><div class="h-3 bg-gray-700 rounded-full overflow-hidden"><div id="todoProgressBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-600 progress-bar" style="width: 0%"></div></div></div><div id="todoList" class="space-y-3"></div></div></div><div id="profileRoom" class="content-pane hidden"><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"><div class="glass-card rounded-2xl p-6 text-center"><div class="text-5xl mb-2">🔥</div><div class="text-3xl font-bold gradient-text" id="studyStreak">0</div><div class="text-sm text-gray-400">Day Streak</div></div><div class="glass-card rounded-2xl p-6 text-center"><div class="text-5xl mb-2">⏱️</div><div class="text-3xl font-bold gradient-text" id="quickStudyTime">0</div><div class="text-sm text-gray-400">Weekly Study</div></div><div class="glass-card rounded-2xl p-6 text-center"><div class="text-5xl mb-2">✅</div><div class="text-3xl font-bold gradient-text" id="quickTasksDone">0</div><div class="text-sm text-gray-400">Tasks Done</div></div><div class="glass-card rounded-2xl p-6 text-center"><div class="text-5xl mb-2">🎯</div><div class="text-3xl font-bold gradient-text" id="quickGoals">0</div><div class="text-sm text-gray-400">Goals Met</div></div></div><div class="glass-card rounded-2xl p-8 mb-8 text-center"><div class="flex items-center justify-center gap-2 mb-4"><span class="text-3xl">💭</span><h3 class="text-2xl font-bold gradient-text">Quote of the Day</h3></div><div id="quoteOfDay" class="text-lg italic text-gray-300">Loading...</div></div><div class="glass-card rounded-2xl p-8 mb-8"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-bold flex items-center gap-2"><span class="text-3xl">🎯</span> Weekly Goal</h3><div class="flex gap-2"><input type="number" id="weeklyGoal" class="w-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-center" value="5"><button onclick="setWeeklyGoal()" class="px-4 py-2 bg-purple-600 rounded-xl hover:bg-purple-700 transition">Set</button></div></div><div><div class="flex justify-between text-sm mb-2"><span>Progress</span><span id="goalProgressText" class="text-purple-400 font-semibold">0/5 materials</span></div><div class="h-3 bg-gray-700 rounded-full overflow-hidden"><div id="goalProgress" class="h-full bg-gradient-to-r from-purple-600 to-pink-600 progress-bar" style="width: 0%"></div></div></div></div><div class="glass-card rounded-2xl p-8 mb-8"><div class="flex items-center gap-2 mb-6"><span class="text-3xl">📅</span><h3 class="text-2xl font-bold gradient-text">Study Streak Calendar</h3></div><div id="streakCalendar"></div></div><div class="glass-card rounded-2xl p-8"><div class="flex items-center gap-2 mb-6"><span class="text-3xl">⭐</span><h3 class="text-2xl font-bold gradient-text">My Bookmarks</h3></div><div id="bookmarksList"></div></div></div></div></div>
-    <div class="bottom-nav"><div class="bottom-nav-item active" onclick="switchRoom('study')"><span class="text-xl">📚</span><span class="text-xs">Study</span></div><div class="bottom-nav-item" onclick="switchRoom('notes')"><span class="text-xl">📝</span><span class="text-xs">Notes</span></div><div class="bottom-nav-item" onclick="switchRoom('books')"><span class="text-xl">📖</span><span class="text-xs">Books</span></div><div class="bottom-nav-item" onclick="switchRoom('todo')"><span class="text-xl">✅</span><span class="text-xs">Tasks</span></div><div class="bottom-nav-item" onclick="switchRoom('profile')"><span class="text-xl">👤</span><span class="text-xs">Profile</span></div></div>
-    <div id="noteModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 hidden p-4"><div class="glass-card rounded-2xl p-6 w-full max-w-md"><h3 class="text-2xl font-bold mb-4 gradient-text">Create New Note</h3><input type="text" id="noteTitle" placeholder="Note Title" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl mb-3 focus:outline-none focus:border-purple-500"><textarea id="noteContent" rows="6" placeholder="Write your notes here..." class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl mb-4 focus:outline-none focus:border-purple-500"></textarea><div class="flex gap-3"><button onclick="saveNote()" class="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-semibold">Save</button><button onclick="closeNoteModal()" class="flex-1 py-3 bg-gray-600 rounded-xl font-semibold">Cancel</button></div></div></div>
-    <div id="timerModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 hidden p-4"><div class="glass-card rounded-2xl p-6 w-full max-w-md text-center"><div class="text-6xl mb-4">⏱️</div><h3 class="text-2xl font-bold mb-4 gradient-text">Focus Timer</h3><div id="timerDisplay" class="text-6xl font-mono font-bold mb-6 gradient-text">25:00</div><div class="flex flex-wrap justify-center gap-3 mb-6"><button onclick="startTimer()" class="px-6 py-3 bg-green-600 rounded-xl font-semibold">Start</button><button onclick="pauseTimer()" class="px-6 py-3 bg-yellow-600 rounded-xl font-semibold">Pause</button><button onclick="resetTimer()" class="px-6 py-3 bg-red-600 rounded-xl font-semibold">Reset</button></div><div class="text-sm text-gray-400"><div>Today's Focus: <span id="todayFocusTime" class="text-purple-400 font-bold">0</span> mins</div><div class="mt-1">Weekly Focus: <span id="weeklyFocusTime" class="text-purple-400 font-bold">0</span> mins</div></div><button onclick="closeTimerModal()" class="mt-4 text-gray-400 hover:text-white">Close</button></div></div>
+    
+    <!-- Mobile Sidebar -->
+    <div id="mobileSidebar" class="mobile-sidebar glass">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div class="text-xl font-bold gradient-text">Hi Tech Academy</div>
+                <button onclick="closeMobileMenu()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 mx-auto gradient-bg rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </div>
+                <h3 id="mobileStudentName" class="font-bold">Loading...</h3>
+                <p id="mobileStudentEmail" class="text-xs text-gray-400 mt-1">student@email.com</p>
+            </div>
+            <div class="space-y-2">
+                <div class="nav-item p-3 rounded-xl" data-room="study" onclick="switchRoomMobile('study')"><div class="flex items-center space-x-3"><span class="text-xl">📚</span><span>Study Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl" data-room="notes" onclick="switchRoomMobile('notes')"><div class="flex items-center space-x-3"><span class="text-xl">📝</span><span>Note Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl" data-room="books" onclick="switchRoomMobile('books')"><div class="flex items-center space-x-3"><span class="text-xl">📖</span><span>Books Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl" data-room="downloads" onclick="switchRoomMobile('downloads')"><div class="flex items-center space-x-3"><span class="text-xl">⬇️</span><span>Downloads</span></div></div>
+                <div class="nav-item p-3 rounded-xl" data-room="todo" onclick="switchRoomMobile('todo')"><div class="flex items-center space-x-3"><span class="text-xl">✅</span><span>To-Do List</span></div></div>
+                <div class="nav-item p-3 rounded-xl" data-room="ai" onclick="switchRoomMobile('ai')"><div class="flex items-center space-x-3"><span class="text-xl">🤖</span><span>AI Tutor</span></div></div>
+                <div class="nav-item p-3 rounded-xl" data-room="profile" onclick="switchRoomMobile('profile')"><div class="flex items-center space-x-3"><span class="text-xl">👤</span><span>My Profile</span></div></div>
+                <div class="nav-item p-3 rounded-xl" onclick="openTimer(); closeMobileMenu();"><div class="flex items-center space-x-3"><span class="text-xl">⏱️</span><span>Focus Timer</span></div></div>
+                <button id="mobileLogoutBtn" class="w-full mt-4 py-3 bg-red-600/80 rounded-xl font-semibold">Logout</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Desktop Sidebar -->
+    <div class="desktop-sidebar glass">
+        <div class="p-6">
+            <div class="text-center mb-8">
+                <div class="w-28 h-28 mx-auto gradient-bg rounded-2xl flex items-center justify-center mb-4 shadow-2xl">
+                    <svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </div>
+                <h3 id="desktopStudentName" class="text-xl font-bold">Loading...</h3>
+                <p id="desktopStudentEmail" class="text-sm text-gray-400 mt-1">student@email.com</p>
+                <div class="mt-3 flex justify-center gap-2">
+                    <span class="badge badge-purple">⭐ Student</span>
+                    <span class="badge badge-green">🟢 Active</span>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <div class="nav-item p-3 rounded-xl cursor-pointer active" data-room="study"><div class="flex items-center space-x-3"><span class="text-xl">📚</span><span>Study Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" data-room="notes"><div class="flex items-center space-x-3"><span class="text-xl">📝</span><span>Note Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" data-room="books"><div class="flex items-center space-x-3"><span class="text-xl">📖</span><span>Books Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" data-room="downloads"><div class="flex items-center space-x-3"><span class="text-xl">⬇️</span><span>Downloads Room</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" data-room="todo"><div class="flex items-center space-x-3"><span class="text-xl">✅</span><span>Plan & To-Do</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" data-room="ai"><div class="flex items-center space-x-3"><span class="text-xl">🤖</span><span>AI Tutor</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" data-room="profile"><div class="flex items-center space-x-3"><span class="text-xl">👤</span><span>My Profile</span></div></div>
+                <div class="nav-item p-3 rounded-xl cursor-pointer" onclick="openTimer()"><div class="flex items-center space-x-3"><span class="text-xl">⏱️</span><span>Focus Timer</span></div></div>
+            </div>
+            <button id="desktopLogoutBtn" class="w-full mt-8 py-3 bg-red-600/80 hover:bg-red-600 rounded-xl font-semibold transition">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container mx-auto px-6 py-8 lg:px-8">
+            <!-- Welcome Header -->
+            <div class="mb-8 welcome-animation">
+                <h1 id="roomTitle" class="text-4xl lg:text-5xl font-black mb-2 gradient-text">Study Room</h1>
+                <p id="roomDescription" class="text-gray-400 text-base lg:text-lg">Your learning materials and resources</p>
+            </div>
+            
+            <!-- Study Room -->
+            <div id="studyRoom" class="content-pane">
+                <div class="materials-grid" id="studyMaterials"></div>
+            </div>
+            
+            <!-- Notes Room -->
+            <div id="notesRoom" class="content-pane hidden">
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h2 class="text-2xl font-bold flex items-center gap-2"><span class="text-3xl">📝</span> My Notes</h2>
+                        <button onclick="createNewNote()" class="px-5 py-2.5 gradient-bg rounded-xl hover:opacity-90 transition flex items-center gap-2 shadow-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            New Note
+                        </button>
+                    </div>
+                    <div id="notesList" class="space-y-3"></div>
+                </div>
+            </div>
+            
+            <!-- Books Room -->
+            <div id="booksRoom" class="content-pane hidden">
+                <div class="materials-grid" id="booksList"></div>
+            </div>
+            
+            <!-- Downloads Room -->
+            <div id="downloadsRoom" class="content-pane hidden">
+                <div class="glass-card rounded-2xl p-6">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><span class="text-3xl">⬇️</span> Downloaded Materials</h2>
+                    <div id="downloadsList" class="space-y-3"></div>
+                </div>
+            </div>
+            
+            <!-- Todo Room -->
+            <div id="todoRoom" class="content-pane hidden">
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h2 class="text-2xl font-bold flex items-center gap-2"><span class="text-3xl">✅</span> My Tasks</h2>
+                        <div class="flex gap-3">
+                            <div class="badge badge-purple">Progress: <span id="todoProgress" class="font-bold">0</span>%</div>
+                            <button onclick="addNewTask()" class="px-4 py-2 bg-purple-600 rounded-xl hover:bg-purple-700 transition">+ Add Task</button>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="todoProgressBar" class="h-full gradient-bg progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="todoList" class="space-y-3"></div>
+                </div>
+            </div>
+            
+            <!-- AI Tutor Room -->
+            <div id="aiRoom" class="content-pane hidden">
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <span class="text-3xl">🤖</span> AI Tutor
+                        </h2>
+                        <button onclick="clearChatHistory()" class="text-sm text-gray-400 hover:text-white">Clear Chat</button>
+                    </div>
+                    
+                    <!-- Chat Messages -->
+                    <div id="chatMessages" class="h-96 overflow-y-auto mb-4 space-y-3 p-2">
+                        <div class="glass rounded-xl p-3">
+                            <div class="flex items-start gap-2">
+                                <span class="text-xl">🤖</span>
+                                <div>
+                                    <div class="font-semibold text-purple-400">AI Tutor</div>
+                                    <div class="text-sm text-gray-300">Hi! I'm your AI tutor. Ask me anything about your studies!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="flex gap-2">
+                        <input type="text" id="chatInput" placeholder="Ask me anything..." 
+                            class="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500">
+                        <button onclick="sendMessage()" class="px-6 py-3 gradient-bg rounded-xl hover:opacity-90 transition">
+                            Send
+                        </button>
+                    </div>
+                    
+                    <!-- Quick Questions -->
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <button onclick="quickQuestion('Explain quantum physics simply')" class="text-xs px-3 py-1 glass rounded-full hover:bg-purple-600/30">⚛️ Quantum Physics</button>
+                        <button onclick="quickQuestion('How do I study effectively?')" class="text-xs px-3 py-1 glass rounded-full hover:bg-purple-600/30">📚 Study Tips</button>
+                        <button onclick="quickQuestion('What is machine learning?')" class="text-xs px-3 py-1 glass rounded-full hover:bg-purple-600/30">🤖 Machine Learning</button>
+                        <button onclick="quickQuestion('Help me with math')" class="text-xs px-3 py-1 glass rounded-full hover:bg-purple-600/30">📐 Math Help</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profile Room -->
+            <div id="profileRoom" class="content-pane hidden">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                    <div class="glass-card rounded-2xl p-4 lg:p-6 text-center stat-card">
+                        <div class="text-4xl lg:text-5xl mb-2">🔥</div>
+                        <div class="text-2xl lg:text-3xl font-bold gradient-text" id="studyStreak">0</div>
+                        <div class="text-xs text-gray-400">Day Streak</div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-4 lg:p-6 text-center stat-card">
+                        <div class="text-4xl lg:text-5xl mb-2">⏱️</div>
+                        <div class="text-2xl lg:text-3xl font-bold gradient-text" id="quickStudyTime">0</div>
+                        <div class="text-xs text-gray-400">Weekly Study</div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-4 lg:p-6 text-center stat-card">
+                        <div class="text-4xl lg:text-5xl mb-2">✅</div>
+                        <div class="text-2xl lg:text-3xl font-bold gradient-text" id="quickTasksDone">0</div>
+                        <div class="text-xs text-gray-400">Tasks Done</div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-4 lg:p-6 text-center stat-card">
+                        <div class="text-4xl lg:text-5xl mb-2">🎯</div>
+                        <div class="text-2xl lg:text-3xl font-bold gradient-text" id="quickGoals">0</div>
+                        <div class="text-xs text-gray-400">Goals Met</div>
+                    </div>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-6 lg:p-8 mb-8 text-center">
+                    <div class="flex items-center justify-center gap-2 mb-4"><span class="text-3xl">💭</span><h3 class="text-2xl font-bold gradient-text">Quote of the Day</h3></div>
+                    <div id="quoteOfDay" class="text-base lg:text-lg italic text-gray-300">Loading...</div>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-6 lg:p-8 mb-8">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h3 class="text-2xl font-bold flex items-center gap-2"><span class="text-3xl">🎯</span> Weekly Goal</h3>
+                        <div class="flex gap-2"><input type="number" id="weeklyGoal" class="w-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-center" value="5"><button onclick="setWeeklyGoal()" class="px-4 py-2 bg-purple-600 rounded-xl hover:bg-purple-700 transition">Set</button></div>
+                    </div>
+                    <div><div class="flex justify-between text-sm mb-2"><span>Progress</span><span id="goalProgressText" class="text-purple-400 font-semibold">0/5 materials</span></div><div class="h-3 bg-gray-700 rounded-full overflow-hidden"><div id="goalProgress" class="h-full gradient-bg progress-bar" style="width: 0%"></div></div></div>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-6 lg:p-8 mb-8">
+                    <div class="flex items-center gap-2 mb-6"><span class="text-3xl">📅</span><h3 class="text-2xl font-bold gradient-text">Study Streak Calendar</h3></div>
+                    <div id="streakCalendar" class="overflow-x-auto"></div>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-6 lg:p-8">
+                    <div class="flex items-center gap-2 mb-6"><span class="text-3xl">⭐</span><h3 class="text-2xl font-bold gradient-text">My Bookmarks</h3></div>
+                    <div id="bookmarksList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="bottom-nav-item active" onclick="switchRoom('study')"><span class="text-xl">📚</span><span class="text-xs">Study</span></div>
+        <div class="bottom-nav-item" onclick="switchRoom('notes')"><span class="text-xl">📝</span><span class="text-xs">Notes</span></div>
+        <div class="bottom-nav-item" onclick="switchRoom('books')"><span class="text-xl">📖</span><span class="text-xs">Books</span></div>
+        <div class="bottom-nav-item" onclick="switchRoom('todo')"><span class="text-xl">✅</span><span class="text-xs">Tasks</span></div>
+        <div class="bottom-nav-item" onclick="switchRoom('ai')"><span class="text-xl">🤖</span><span class="text-xs">AI</span></div>
+        <div class="bottom-nav-item" onclick="switchRoom('profile')"><span class="text-xl">👤</span><span class="text-xs">Profile</span></div>
+    </div>
+
+    <!-- Modals -->
+    <div id="noteModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 hidden p-4">
+        <div class="glass-card rounded-2xl p-6 w-full max-w-md"><h3 class="text-2xl font-bold mb-4 gradient-text">Create New Note</h3><input type="text" id="noteTitle" placeholder="Note Title" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl mb-3 focus:outline-none focus:border-purple-500"><textarea id="noteContent" rows="6" placeholder="Write your notes here..." class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl mb-4 focus:outline-none focus:border-purple-500"></textarea><div class="flex gap-3"><button onclick="saveNote()" class="flex-1 py-3 gradient-bg rounded-xl font-semibold">Save</button><button onclick="closeNoteModal()" class="flex-1 py-3 bg-gray-600 rounded-xl font-semibold">Cancel</button></div></div>
+    </div>
+
+    <div id="timerModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 hidden p-4">
+        <div class="glass-card rounded-2xl p-6 w-full max-w-md text-center"><div class="text-6xl mb-4">⏱️</div><h3 class="text-2xl font-bold mb-4 gradient-text">Focus Timer</h3><div id="timerDisplay" class="text-6xl font-mono font-bold mb-6 gradient-text">25:00</div><div class="flex flex-wrap justify-center gap-3 mb-6"><button onclick="startTimer()" class="px-6 py-3 bg-green-600 rounded-xl font-semibold">Start</button><button onclick="pauseTimer()" class="px-6 py-3 bg-yellow-600 rounded-xl font-semibold">Pause</button><button onclick="resetTimer()" class="px-6 py-3 bg-red-600 rounded-xl font-semibold">Reset</button></div><div class="text-sm text-gray-400"><div>Today's Focus: <span id="todayFocusTime" class="text-purple-400 font-bold">0</span> mins</div><div class="mt-1">Weekly Focus: <span id="weeklyFocusTime" class="text-purple-400 font-bold">0</span> mins</div></div><button onclick="closeTimerModal()" class="mt-4 text-gray-400 hover:text-white">Close</button></div>
+    </div>
+
     <script src="./js/supabase.js"></script>
     <script src="./js/dashboard.js"></script>
     <script>
-        // Mobile menu functions
         function toggleMobileMenu() { document.getElementById('mobileSidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
         function closeMobileMenu() { document.getElementById('mobileSidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
         function switchRoom(room) { document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active')); event.currentTarget.classList.add('active'); const navItem = document.querySelector(`.nav-item[data-room="${room}"]`); if (navItem) navItem.click(); }
@@ -68,106 +446,21 @@
         function updateMobileProfile(name, email) { const mobileName = document.getElementById('mobileStudentName'); const mobileEmail = document.getElementById('mobileStudentEmail'); if (mobileName) mobileName.textContent = name; if (mobileEmail) mobileEmail.textContent = email; }
         window.addEventListener('resize', () => { if (window.innerWidth > 768) closeMobileMenu(); });
         
-        // PWA & OFFLINE MODE CODE
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
         
-        // Show offline badge
-        function updateOfflineStatus() {
-            const badge = document.getElementById('offlineBadge');
-            if (!navigator.onLine) {
-                badge.classList.add('show');
-            } else {
-                badge.classList.remove('show');
-            }
-        }
-        window.addEventListener('online', updateOfflineStatus);
-        window.addEventListener('offline', updateOfflineStatus);
-        updateOfflineStatus();
-        
-        // Save user data for offline
-        async function saveUserForOffline() {
-            if (!currentUser) return;
-            const userData = {
-                user: currentUser,
-                profile: currentUserProfile,
-                notes: userNotes,
-                tasks: userTasks,
-                downloads: downloadedMaterials,
-                bookmarks: bookmarkedMaterials,
-                timestamp: Date.now()
-            };
-            localStorage.setItem('offline_user_data', JSON.stringify(userData));
-            localStorage.setItem('offline_mode_enabled', 'true');
-        }
-        
-        // Load offline data
-        function loadOfflineData() {
-            const savedData = localStorage.getItem('offline_user_data');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                currentUser = data.user;
-                currentUserProfile = data.profile;
-                userNotes = data.notes || [];
-                userTasks = data.tasks || [];
-                downloadedMaterials = data.downloads || [];
-                bookmarkedMaterials = data.bookmarks || [];
-                
-                // Update UI
-                document.getElementById('studentFullName').textContent = currentUserProfile.full_name || currentUser.email.split('@')[0];
-                document.getElementById('studentEmailDisplay').textContent = currentUser.email;
-                document.getElementById('profileName').textContent = currentUserProfile.full_name || currentUser.email.split('@')[0];
-                document.getElementById('profileEmail').textContent = currentUser.email;
-                document.getElementById('desktopStudentName').textContent = currentUserProfile.full_name || currentUser.email.split('@')[0];
-                document.getElementById('desktopStudentEmail').textContent = currentUser.email;
-                
-                displayNotes();
-                displayTasks();
-                displayDownloads();
-                displayBookmarks();
-                updateProfileStats();
-                updateQuickStats();
-                updateTodoProgress();
-                return true;
-            }
-            return false;
-        }
-        
-        // Override initDashboard for offline
-        const originalInit = initDashboard;
-        window.initDashboard = async function() {
-            showLoading();
-            if (!navigator.onLine) {
-                if (loadOfflineData()) {
-                    console.log('Running in offline mode');
-                    hideLoading();
-                    setupNavigation();
-                    document.getElementById('offlineBadge').classList.add('show');
-                    return;
-                }
-            }
-            await originalInit();
-            if (currentUser) saveUserForOffline();
-        };
-        
-        // Save data when changed
-        const originalSaveNotes = saveNotes;
-        window.saveNotes = function() { originalSaveNotes(); if (currentUser) saveUserForOffline(); };
-        const originalSaveTasks = saveTasks;
-        window.saveTasks = function() { originalSaveTasks(); if (currentUser) saveUserForOffline(); };
-        const originalSaveDownloads = saveDownloads;
-        window.saveDownloads = function() { originalSaveDownloads(); if (currentUser) saveUserForOffline(); };
-        
-        // Install prompt
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             const btn = document.createElement('div');
-            btn.innerHTML = '<div class="fixed bottom-20 right-4 bg-purple-600 rounded-full p-3 shadow-lg cursor-pointer z-50 animate-bounce"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>';
+            btn.innerHTML = '<div class="fixed bottom-24 right-4 bg-purple-600 rounded-full p-3 shadow-lg cursor-pointer z-50 animate-bounce"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>';
             btn.onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; btn.remove(); } };
             document.body.appendChild(btn);
             setTimeout(() => btn.remove(), 30000);
         });
+        
+        window.addEventListener('offline', () => { document.getElementById('offlineBadge').classList.add('show'); });
+        window.addEventListener('online', () => { document.getElementById('offlineBadge').classList.remove('show'); });
     </script>
 </body>
-</html>
+    </html>
